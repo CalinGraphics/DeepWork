@@ -110,6 +110,8 @@ Panoul **Gradle** → **DeepWork** → **desktop** → **Tasks** → **compose d
 
 `network_security_config` permite trafic **cleartext** pentru LAN/USB (vezi `app\src\main\res\xml\network_security_config.xml`) — util la proiect academic; pentru producție ai folosi **WSS**.
 
+**Eroare „Engine doesn't support WebSocketCapability”:** clientul Ktor pe Android folosește engine-ul **OkHttp** (`ktor-client-okhttp`), nu `ktor-client-android`, deoarece engine-ul Android nu suportă WebSocket.
+
 ---
 
 ## Senzori pe telefon (gesturi)

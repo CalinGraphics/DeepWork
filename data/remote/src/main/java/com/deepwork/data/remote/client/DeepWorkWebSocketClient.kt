@@ -2,7 +2,7 @@ package com.deepwork.data.remote.client
 
 import com.deepwork.data.remote.model.DeepWorkMessage
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.android.Android
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.websocket.Frame
@@ -26,7 +26,7 @@ import javax.inject.Singleton
 class DeepWorkWebSocketClient @Inject constructor() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val client = HttpClient(Android) {
+    private val client = HttpClient(OkHttp) {
         install(WebSockets)
     }
 

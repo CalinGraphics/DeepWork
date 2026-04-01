@@ -24,7 +24,8 @@ dependencies {
     implementation(project(":domain"))
     implementation(project(":core:common"))
     implementation(libs.androidx.core.ktx)
-    implementation(libs.ktor.client.android)
+    // OkHttp suportă WebSocket pe Android; engine-ul "Android" nu (WebSocketCapability).
+    implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.websockets)
     implementation(libs.kotlin.serialization)
