@@ -28,6 +28,8 @@ dependencies {
     implementation(project(":core:ui"))
     implementation(project(":core:common"))
     implementation(project(":data:local"))
+    implementation(project(":data:remote"))
+    implementation(libs.kotlin.serialization)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

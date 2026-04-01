@@ -287,7 +287,7 @@ private fun DeepWorkDrawerSheet(
                 color = Color.White.copy(alpha = 0.08f)
             )
             NavigationDrawerItem(
-                label = { Text("Companion PC") },
+                label = { Text("Conectare remote") },
                 selected = currentRoute == ROUTE_PC_REMOTE,
                 onClick = { onNavigate(ROUTE_PC_REMOTE) },
                 icon = {
@@ -298,12 +298,6 @@ private fun DeepWorkDrawerSheet(
                 )
             )
             Spacer(modifier = Modifier.weight(1f))
-            Text(
-                "WebSocket port 8080 · USB: adb reverse tcp:8080 tcp:8080",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 16.dp)
-            )
         }
     }
 }

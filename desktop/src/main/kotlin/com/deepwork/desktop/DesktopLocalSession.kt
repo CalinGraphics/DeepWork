@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -68,13 +69,16 @@ object DesktopLocalSession {
     private val _sessionHistory = MutableStateFlow<List<DesktopSessionLog>>(loaded.history.take(100))
     val sessionHistory: StateFlow<List<DesktopSessionLog>> = _sessionHistory.asStateFlow()
 
-    fun setPreferredMinutes(minutes: Int) {
+    fun setPreferredMinutes(minutes: Int, fromRemote: Boolean = false) {
         val v = minutes.coerceIn(5, 120)
         _preferredMinutes.value = v
         if (_phase.value == DesktopSessionPhase.Idle) {
             _remainingSeconds.value = v * 60
         }
         persistSnapshot()
+        if (!fromRemote && DesktopWebSocketRelay.hasClient()) {
+            DesktopWebSocketRelay.broadcastTimerSyncMinutes(v)
+        }
     }
 
     fun startSession() {
@@ -144,6 +148,11 @@ object DesktopLocalSession {
             MessageType.TIMER_START -> startSession()
             MessageType.TIMER_PAUSE -> pause()
             MessageType.TIMER_STOP -> endSession(SessionEndReason.Remote)
+            MessageType.TIMER_SYNC -> {
+                val minutes = (msg.payload as? JsonPrimitive)?.content?.toIntOrNull()?.coerceIn(5, 120)
+                    ?: return
+                setPreferredMinutes(minutes, fromRemote = true)
+            }
             else -> {}
         }
     }

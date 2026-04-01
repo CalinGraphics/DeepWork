@@ -31,6 +31,7 @@ fun Application.module() {
 
     routing {
         webSocket("/deepwork") {
+            DesktopWebSocketRelay.attach(this)
             DesktopState.setConnected(true)
             DesktopState.updateStatus("Client Connected! DeepWork session active.")
             try {
@@ -51,6 +52,7 @@ fun Application.module() {
                     DesktopState.updateStatus("Error: ${e.message}")
                 }
             } finally {
+                DesktopWebSocketRelay.detach(this)
                 DesktopState.setConnected(false)
                 DesktopState.updateStatus("Client Disconnected.")
             }

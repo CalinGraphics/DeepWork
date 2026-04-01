@@ -51,8 +51,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -64,6 +66,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.painterResource
+import kotlin.math.roundToInt
 
 private val DeepIndigo = Color(0xFF5C55E8)
 private val DeepTeal = Color(0xFF00C4D4)
@@ -264,7 +267,7 @@ private fun DesktopTopBar(
             Image(
                 painter = painterResource("kara_logo.png"),
                 contentDescription = "Kara",
-                modifier = Modifier.height(32.dp)
+                modifier = Modifier.height(112.dp)
             )
             Text(
                 "DESKTOP",
@@ -302,6 +305,11 @@ private fun SessionTimerCard(status: String, connected: Boolean) {
     val preferredMinutes by DesktopLocalSession.preferredMinutes.collectAsState()
     val remaining by DesktopLocalSession.remainingSeconds.collectAsState()
 
+    var sliderDraft by remember { mutableFloatStateOf(preferredMinutes.toFloat()) }
+    LaunchedEffect(preferredMinutes) {
+        sliderDraft = preferredMinutes.toFloat().coerceIn(5f, 120f)
+    }
+
     Card(
         colors = CardDefaults.cardColors(containerColor = SurfaceC),
         shape = RoundedCornerShape(12.dp),
@@ -318,10 +326,19 @@ private fun SessionTimerCard(status: String, connected: Boolean) {
                     Modifier.fillMaxWidth().widthIn(max = 520.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text("Durată sesiune: $preferredMinutes min", fontSize = 12.sp, color = Color(0xFFC8C8D8))
+                    Text(
+                        "Durată sesiune: ${sliderDraft.roundToInt()} min",
+                        fontSize = 12.sp,
+                        color = Color(0xFFC8C8D8)
+                    )
                     Slider(
-                        value = preferredMinutes.toFloat(),
-                        onValueChange = { DesktopLocalSession.setPreferredMinutes(it.toInt()) },
+                        value = sliderDraft,
+                        onValueChange = { sliderDraft = it.coerceIn(5f, 120f) },
+                        onValueChangeFinished = {
+                            val v = sliderDraft.roundToInt().coerceIn(5, 120)
+                            sliderDraft = v.toFloat()
+                            DesktopLocalSession.setPreferredMinutes(v)
+                        },
                         valueRange = 5f..120f,
                         colors = SliderDefaults.colors(
                             thumbColor = DeepIndigo,

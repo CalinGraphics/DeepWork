@@ -119,12 +119,8 @@ fun SettingsScreen(
             }
         }
 
-        Text(
-            if (prefs.isPremium) "Cont Premium" else "Cont Free",
-            style = MaterialTheme.typography.bodyLarge
-        )
         Button(onClick = onOpenDesktopPairing, modifier = Modifier.fillMaxWidth()) {
-            Text("Conectare companion desktop (IP / USB)")
+            Text("Conectare remote prin IP sau USB")
         }
         Text(
             "Deschide ecranul de împerechere când aplicația desktop rulează pe PC.",
