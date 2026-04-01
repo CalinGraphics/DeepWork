@@ -224,6 +224,8 @@ class TimerViewModel @Inject constructor(
             Action.StartSession ->
                 if (_uiState.value is TimerState.Idle) startSession(_sessionDurationMinutes.value) else resumeSession()
             Action.PauseSession -> pauseSession()
+            Action.ResumeSession -> resumeSession()
+            Action.ResetSession -> resetSession()
             Action.StopSession -> stopSession()
             else -> {}
         }

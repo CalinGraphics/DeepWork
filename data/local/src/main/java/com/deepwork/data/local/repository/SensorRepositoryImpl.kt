@@ -19,7 +19,7 @@ import kotlin.math.sqrt
 
 /**
  * Senzori reali pe hardware:
- * - **Accelerometru**: față în jos, shake (varianță magnitudine), înclinare față/spate (pitch).
+ * - **Accelerometru**: față în jos (pauză), ridicare după față în jos (reluare), shake (reset), înclinare față/spate (pitch).
  * - **Giroscop** (rad/s): răsuciri stânga/dreapta pe axa Z și acumulare pentru o rotație completă (~360°).
  *
  * Emulatorul adesea nu are giroscop; atunci rămân doar gesturile pe accelerometru.
@@ -50,10 +50,16 @@ class SensorRepositoryImpl @Inject constructor(
         // Minim între două gesturi (evită spam când senzorul zgomotește).
         var lastGestureTime = 0L
         val minGapMs = 450L
+        val facePairGapMs = 200L
 
         fun tryEmit(gesture: GestureType) {
             val now = System.currentTimeMillis()
-            if (now - lastGestureTime < minGapMs) return
+            val gap = if (gesture == GestureType.FACE_DOWN || gesture == GestureType.FACE_UP) {
+                facePairGapMs
+            } else {
+                minGapMs
+            }
+            if (now - lastGestureTime < gap) return
             lastGestureTime = now
             trySend(gesture)
         }
@@ -80,6 +86,9 @@ class SensorRepositoryImpl @Inject constructor(
                         val faceDownNow = az < -8.0f
                         if (faceDownNow && !lastFaceDown) {
                             tryEmit(GestureType.FACE_DOWN)
+                        }
+                        if (!faceDownNow && lastFaceDown) {
+                            tryEmit(GestureType.FACE_UP)
                         }
                         lastFaceDown = faceDownNow
 

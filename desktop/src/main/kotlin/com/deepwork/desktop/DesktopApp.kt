@@ -523,8 +523,10 @@ private fun GestureMapCard(connected: Boolean, lastGesture: String?) {
                 Text("Ultimul gest: $it", fontSize = 12.sp, color = DeepTeal)
             }
             GestureRow(Icons.Outlined.ScreenRotation, "Rotate Phone", "Change Ambient Volume")
-            GestureRow(Icons.Outlined.Smartphone, "Face Down", "Deep Focus Mode")
-            GestureRow(Icons.Outlined.TouchApp, "Double Tap", "Log Quick Task")
+            GestureRow(Icons.Outlined.Smartphone, "Face Down", "Pune pauză la sesiune")
+            GestureRow(Icons.Outlined.Smartphone, "Ridică telefonul", "Reluare din pauză")
+            GestureRow(Icons.Outlined.TouchApp, "Shake", "Reset sesiune")
+            GestureRow(Icons.Outlined.TouchApp, "Double Tap", "Pornește sesiunea")
         }
     }
 }

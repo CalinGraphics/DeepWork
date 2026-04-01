@@ -9,6 +9,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.deepwork.core.ui.util.HapticManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -18,6 +19,7 @@ class TimerNotifier @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val manager = NotificationManagerCompat.from(context)
+    private val haptics = HapticManager(context)
 
     fun showSessionStarted(minutes: Int) {
         notify(
@@ -36,6 +38,7 @@ class TimerNotifier @Inject constructor(
     }
 
     fun showSessionCompleted(minutes: Int) {
+        runCatching { haptics.playDoubleBuzz() }
         notify(
             id = 1103,
             title = "Sesiune finalizata",

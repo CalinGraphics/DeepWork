@@ -63,9 +63,11 @@ fun PcRemoteScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Gesture Map", fontWeight = FontWeight.SemiBold)
                 }
-                GestureRow("Rotate Phone", "Change Ambient Volume")
-                GestureRow("Face Down", "Deep Focus Mode")
-                GestureRow("Double Tap", "Log Quick Task")
+                GestureRow("Rotate Phone", "Volum ambient")
+                GestureRow("Face Down", "Pauză sesiune")
+                GestureRow("Ridică telefonul", "Reluare din pauză")
+                GestureRow("Shake", "Reset sesiune")
+                GestureRow("Double Tap", "Pornește sesiunea")
             }
         }
 
