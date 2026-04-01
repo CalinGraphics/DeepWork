@@ -81,16 +81,44 @@ Panoul **Gradle** → **DeepWork** → **desktop** → **Tasks** → **compose d
 
 ---
 
-## Telefon ↔ PC (rețea)
+## Telefon ↔ PC (același Wi‑Fi) — pași concreți
 
-1. Pornește **desktop** (`:desktop:run`) — serverul ascultă pe **8080**.
-2. **Același Wi‑Fi** sau **USB** cu:
+1. **Pe PC (Windows)** pornește companionul desktop (server WebSocket pe **8080**):
+   ```powershell
+   cd path\to\DeepWork
+   .\gradlew.bat :desktop:run
+   ```
+   Lasă fereastra deschisă; în UI ar trebui să vezi status de tip „Server ready” / URL de pairing.
+
+2. **Află IP-ul PC-ului în aceeași rețea Wi‑Fi** ca telefonul:
+   - Deschide **PowerShell** sau **cmd** și rulează: `ipconfig`
+   - Caută adaptorul **Wi‑Fi** (Wireless LAN) și notează **IPv4 Address** (ex. `192.168.0.42`).
+
+3. **Verifică rețeaua:** telefonul și PC-ul trebuie să fie pe **același SSID** (aceeași rețea Wi‑Fi), nu „Guest” pe unul și principal pe altul, dacă acestea sunt izolate.
+
+4. **Firewall Windows** (dacă nu se conectează): permite conexiuni **inbound** pe portul **8080** pentru rețea privată, sau testează o dată cu firewall-ul oprit doar ca diagnostic.
+
+5. **Pe Android:** pornește aplicația **DeepWork** → meniu (drawer) → **Companion PC** (sau din Setări butonul de împerechere).
+
+6. În câmpul de adresă introduci **IP-ul de la pasul 2** (ex. `192.168.0.42`) și apeși **Conectează**. Nu pune `http://` în față; clientul folosește WebSocket către `ws://IP:8080/deepwork`.
+
+7. **Dacă tot nu merge:** ping între dispozitive (din PC: `ping IP_telefon` dacă răspunde la ping) sau încearcă varianta **USB** cu:
    ```text
    adb reverse tcp:8080 tcp:8080
    ```
-3. În aplicația Android, la companion: pentru USB folosește adresa **`127.0.0.1`** după `adb reverse`.
+   și în app adresa **`127.0.0.1`**.
 
-`network_security_config` permite `cleartext` pentru LAN/USB (vezi `app\src\main\res\xml\network_security_config.xml`).
+`network_security_config` permite trafic **cleartext** pentru LAN/USB (vezi `app\src\main\res\xml\network_security_config.xml`) — util la proiect academic; pentru producție ai folosi **WSS**.
+
+---
+
+## Senzori pe telefon (gesturi)
+
+Implementare: `data/local/.../SensorRepositoryImpl.kt`.
+
+- **Accelerometru:** față în jos, shake, înclinare (pitch).
+- **Giroscop** (`Sensor.TYPE_GYROSCOPE`): răsuciri stânga/dreapta pe axa Z și acumulare pentru ~**360°** într-o singură mișcare de rotire.
+- Emulatorul uneori **nu expune giroscop**; testează pe **telefon fizic** pentru gesturi complete.
 
 ---
 
