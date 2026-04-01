@@ -18,7 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Flag
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -45,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.deepwork.core.ui.theme.DeepIndigo
 import com.deepwork.core.ui.theme.DeepTeal
@@ -152,61 +154,87 @@ fun TaskScreen(
     }
 
     if (showAddDialog) {
-        AlertDialog(
-            onDismissRequest = { showAddDialog = false },
-            title = { Text("Task nou") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Dialog(onDismissRequest = { showAddDialog = false }) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+            ) {
+                Column(
+                    Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        "Task nou",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Titlu, proiect și estimare — apar pe Timer și în listă.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     OutlinedTextField(
                         value = title,
                         onValueChange = { title = it },
                         label = { Text("Titlu") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
                     )
                     OutlinedTextField(
                         value = category,
                         onValueChange = { category = it },
                         label = { Text("Proiect / categorie") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
                     )
                     OutlinedTextField(
                         value = minutesStr,
                         onValueChange = { minutesStr = it.filter { ch -> ch.isDigit() } },
                         label = { Text("Minute estimate") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
                     )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val m = minutesStr.toIntOrNull()?.coerceIn(1, 480) ?: 25
-                        val t = title.trim()
-                        if (t.isNotEmpty()) {
-                            viewModel.addTask(
-                                title = t,
-                                category = category.trim().ifEmpty { "General" },
-                                estimatedMinutes = m
-                            )
-                            showAddDialog = false
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Task adăugat")
-                            }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { showAddDialog = false }) {
+                            Text("Anulează")
+                        }
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Button(
+                            onClick = {
+                                val m = minutesStr.toIntOrNull()?.coerceIn(1, 480) ?: 25
+                                val t = title.trim()
+                                if (t.isNotEmpty()) {
+                                    viewModel.addTask(
+                                        title = t,
+                                        category = category.trim().ifEmpty { "General" },
+                                        estimatedMinutes = m
+                                    )
+                                    showAddDialog = false
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Task adăugat")
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = DeepIndigo)
+                        ) {
+                            Text("Salvează")
                         }
                     }
-                ) {
-                    Text("Salvează")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAddDialog = false }) {
-                    Text("Anulează")
                 }
             }
-        )
+        }
     }
 }
 

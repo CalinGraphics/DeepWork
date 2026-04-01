@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -90,7 +91,7 @@ fun PcRemoteScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         Text(
-                            "Adresă IP",
+                            "Conexiune",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -103,27 +104,30 @@ fun PcRemoteScreen(
                             value = ipInput,
                             onValueChange = { ipInput = it },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("IP") },
+                            label = { Text("Adresă IP") },
                             singleLine = true,
-                            placeholder = { Text("192.168.1.10") },
+                            placeholder = { Text("Introdu adresa IP") },
                             shape = RoundedCornerShape(12.dp)
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
+                            val btnModifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 48.dp)
                             OutlinedButton(
                                 onClick = {
                                     ipInput = "127.0.0.1"
                                     viewModel.connectToDesktop("127.0.0.1")
                                 },
-                                modifier = Modifier.weight(1f)
+                                modifier = btnModifier
                             ) {
                                 Text("Conectează prin USB")
                             }
                             Button(
                                 onClick = { viewModel.connectToDesktop(ipInput) },
-                                modifier = Modifier.weight(1f)
+                                modifier = btnModifier
                             ) {
                                 Text("Conectează")
                             }
