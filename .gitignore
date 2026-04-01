@@ -1,18 +1,52 @@
+# Android / Gradle
 *.iml
-.gradle
-# Ieșiri accidentale în afara build/ (ex. bin/ din IDE sau compile manual)
+.gradle/
+**/build/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local machine paths (Android SDK, etc.) — nu se publică
+local.properties
+/local.properties
+
+# IDE Android Studio / IntelliJ
+.idea/
+# Ignore tot ce e generat de IDE (unele proiecte pastreaza doar cateva fisiere; aici ignoram tot)
+# Daca vrei setari comune de echipa, poti versiona manual fisiere specifice cu !.idea/foo.xml
+
+# VS Code / Cursor
+.vscode/
+
+# Kotlin tooling (cache incremental locala)
+.kotlin/
+
+# Ieșiri manuale / alternative de compile
 **/bin/
 **/out/
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+
+# NDK / CMake
+.externalNativeBuild/
+.cxx/
+
+# Captură ecran / profiling
+/captures/
+
+# OS
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+Thumbs.db
+
+# Semnare aplicații — NU comita niciodată (chei private)
+*.jks
+*.keystore
+*.p12
+*.pfx
+
+# Secrete / mediu local (dacă le adaugi mai târziu)
+.env
+.env.*
+!.env.example
+
+# Optional: rapoarte locale
+*.log
+lint/outputs/
+.navigation/
