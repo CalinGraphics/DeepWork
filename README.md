@@ -1,146 +1,115 @@
 # DeepWork
 
-Suite de productivitate **Deep Focus**: aplicație **Android** (Compose) + **companion desktop** (Compose Desktop + Ktor) sincronizate opțional prin **WebSocket** (port **8080**).
-
-## Sumar aplicație
-
-| Componentă | Rol |
-|--------------|-----|
-| **Timer** | Sesiuni Pomodoro-like, arc progres, integrare cu taskul de focus și sesiuni persistate (Room). |
-| **Tasks** | Liste de taskuri, focus pentru timer, XP/streak legate de activitate. |
-| **Analytics** | Streak, focus score, realizări (achievements). |
-| **Setări** | Durată sesiune (5–120 min), onboarding, legătură către companion. |
-| **Companion PC** | Împerechere IP / USB (`adb reverse`), client WebSocket către desktop. |
-| **Desktop** | UI companion, server WebSocket, afișare stare sesiune / heatmap / pairing. |
-
-**Tema UI:** fundal întunecat (`#121121`), accente **indigo** `#5C55E8` și **teal** `#00C4D4` (vezi și `docs/design-mockups/`).
-
-**Arhitectură:** proiect modular Gradle — `domain` (modele + use case-uri), `data:local` / `data:remote`, `core:ui` (temă Compose), feature-uri pe verticală (`feature:timer`, `feature:tasks`, …), modul `app` (Hilt, navigare), modul `desktop` (JVM).
+**Text scurt pentru GitHub (About / descriere repo):**  
+*Aplicație Android pentru sesiuni de focus (Pomodoro), taskuri, statistici și un companion pe PC legat prin rețea locală — Kotlin, Compose, Room.*
 
 ---
 
-## Cerințe
+DeepWork e o aplicație de productivitate pe care am construit-o ca să țin sesiuni de lucru concentrate: timer, listă de taskuri, câteva statistici (streak, XP, heatmap) și, dacă vrei, un ferestrău pe laptop care se leagă de telefon prin Wi‑Fi sau USB. Pe telefon folosești interfața principală; pe PC rulează un „companion” care ascultă pe portul 8080 și arată starea sesiunii. Poți folosi și gesturi (accelerometru + giroscop) ca să declanșezi acțiuni fără să tot apeși pe ecran.
+
+Interfața e întunecată, cu accente indigo și teal; proiectul e împărțit pe module (domain, date locale/remote, feature-uri separate pentru timer, tasks, analytics, setări, pc-remote).
+
+---
+
+## Ce poți face în app
+
+- **Timer** — sesiuni cu durată reglabilă (5–120 min), pauză, reluare, sesiuni salvate local.
+- **Tasks** — adaugi taskuri, le bifezi, alegi unul ca focus pentru timer.
+- **Analytics** — streak, focus score, XP, heatmap pe zile, realizări.
+- **Setări** — durata implicită a sesiunii, onboarding, legătură spre companion.
+- **Companion PC** — introduci IP-ul laptopului și te conectezi la serverul WebSocket; poți folosi și USB cu `adb reverse` dacă e nevoie.
+- **Desktop** — aplicație Compose Desktop pe Windows (sau JVM) cu același branding, server Ktor pe `/deepwork`.
+
+---
+
+## Ce ai nevoie instalat
 
 - **JDK 17**
-- **Android Studio** (sau Android Gradle Plugin compatibil cu proiectul)
-- Pentru desktop: același JDK; pe Windows se folosesc task-urile Compose Desktop de mai jos.
+- **Android Studio** (sau un mediu compatibil cu Gradle-ul din proiect)
+- Pentru companionul desktop: același JDK; pe Windows comenzile sunt de mai jos.
 
 ---
 
-## Build & run — Android (telefon)
+## Android — build și APK
 
-### Din Android Studio
+**Din Android Studio:** deschizi folderul `DeepWork`, aștepți sync, apoi Run pe modulul `app` (telefon sau emulator).
 
-1. Deschide folderul rădăcină al repo-ului (`DeepWork`).
-2. Așteaptă **Gradle Sync**.
-3. Selectează configurația **Run: `app`**, alege dispozitivul fizic sau emulator → **Run** (▶).
-
-### Din terminal
+**Din terminal (PowerShell), în folderul proiectului:**
 
 ```powershell
-cd path\to\DeepWork
+cd D:\Facultate\DeepWork
 .\gradlew.bat :app:assembleDebug
 ```
 
-APK debug: `app\build\outputs\apk\debug\app-debug.apk`.
-
-Release (necesită semnare configurată):
-
-```powershell
-.\gradlew.bat :app:assembleRelease
-```
+APK debug: `app\build\outputs\apk\debug\app-debug.apk` — îl poți copia pe telefon sau instala cu `adb install -r app\build\outputs\apk\debug\app-debug.apk` dacă telefonul e conectat.
 
 ---
 
-## Build & run — Desktop (PC)
-
-### Rulare rapidă
+## Desktop — cum pornești companionul pe laptop
 
 ```powershell
-cd path\to\DeepWork
+cd D:\Facultate\DeepWork
 .\gradlew.bat :desktop:run
 ```
 
-### JAR (Uber JAR pentru OS-ul curent)
+Lasă fereastra pornită; serverul ascultă pe **8080**. În interfața desktop ar trebui să vezi status de tip „server ready” sau URL de pairing.
 
-```powershell
-.\gradlew.bat :desktop:packageUberJarForCurrentOS
-```
-
-### Distribuție / installer (OS curent)
-
-```powershell
-.\gradlew.bat :desktop:packageDistributionForCurrentOS
-```
-
-Output-urile Compose Desktop sunt sub `desktop\build\compose\` (structură generată de plugin).
-
-### Din Android Studio
-
-Panoul **Gradle** → **DeepWork** → **desktop** → **Tasks** → **compose desktop** → `run`.
+Alte variante (JAR, pachet): `packageUberJarForCurrentOS` / `packageDistributionForCurrentOS` — vezi task-urile Compose Desktop în Gradle.
 
 ---
 
-## Telefon ↔ PC (același Wi‑Fi) — pași concreți
+## Telefon + laptop, fără cablu (Wi‑Fi) — pașii pe care îi faci tu
 
-1. **Pe PC (Windows)** pornește companionul desktop (server WebSocket pe **8080**):
-   ```powershell
-   cd path\to\DeepWork
-   .\gradlew.bat :desktop:run
-   ```
-   Lasă fereastra deschisă; în UI ar trebui să vezi status de tip „Server ready” / URL de pairing.
+Asta e fluxul când vrei să scoți cablulul USB și să folosești telefonul din cameră, cu gesturi (giroscop / accelerometru), iar laptopul stă pe birou cu companionul pornit.
 
-2. **Află IP-ul PC-ului în aceeași rețea Wi‑Fi** ca telefonul:
-   - Deschide **PowerShell** sau **cmd** și rulează: `ipconfig`
-   - Caută adaptorul **Wi‑Fi** (Wireless LAN) și notează **IPv4 Address** (ex. `192.168.0.42`).
+1. **Instalezi aplicația pe telefon** o singură dată (din Android Studio Run, sau `adb install` cu cablul, sau copiezi APK-ul pe telefon). După ce e instalată, **nu mai ai nevoie de cablu** pentru folosirea normală.
 
-3. **Verifică rețeaua:** telefonul și PC-ul trebuie să fie pe **același SSID** (aceeași rețea Wi‑Fi), nu „Guest” pe unul și principal pe altul, dacă acestea sunt izolate.
+2. **Laptopul și telefonul pe același Wi‑Fi** — același rețea (ex. „Acasă” pe ambele), nu „Guest” pe unul și principal pe altul dacă acestea sunt izolate.
 
-4. **Firewall Windows** (dacă nu se conectează): permite conexiuni **inbound** pe portul **8080** pentru rețea privată, sau testează o dată cu firewall-ul oprit doar ca diagnostic.
+3. **Pe laptop** pornești companionul: `.\gradlew.bat :desktop:run` și îl lași deschis.
 
-5. **Pe Android:** pornește aplicația **DeepWork** → meniu (drawer) → **Companion PC** (sau din Setări butonul de împerechere).
+4. **Află IP-ul laptopului** în acea rețea: în PowerShell rulezi `ipconfig` și caută la **Wireless LAN adapter Wi‑Fi** câmpul **IPv4 Address** (ex. `192.168.1.7`). Dacă IP-ul se schimbă după ce te reconectezi la Wi‑Fi, îl verifici din nou.
 
-6. În câmpul de adresă introduci **IP-ul de la pasul 2** (ex. `192.168.0.42`) și apeși **Conectează**. Nu pune `http://` în față; clientul folosește WebSocket către `ws://IP:8080/deepwork`.
+5. **Firewall Windows:** dacă telefonul nu se conectează, permite trafic **inbound** pe portul **8080** pentru rețea privată, sau testezi o dată cu firewall-ul oprit doar ca să vezi dacă asta era problema.
 
-7. **Dacă tot nu merge:** ping între dispozitive (din PC: `ping IP_telefon` dacă răspunde la ping) sau încearcă varianta **USB** cu:
-   ```text
-   adb reverse tcp:8080 tcp:8080
-   ```
-   și în app adresa **`127.0.0.1`**.
+6. **Pe telefon** deschizi DeepWork → meniu (drawer) → **Companion PC** (sau din Setări butonul de împerechere). În câmp pui **doar IP-ul** (ex. `192.168.1.7`), fără `http://`, apoi **Conectează**.
 
-`network_security_config` permite trafic **cleartext** pentru LAN/USB (vezi `app\src\main\res\xml\network_security_config.xml`) — util la proiect academic; pentru producție ai folosi **WSS**.
+7. **Timer** — pornești o sesiune; gesturile (telefon cu fața în jos, shake, răsuciri după giroscop etc.) sunt procesate pe telefon și, dacă ești conectat, se trimit și către desktop.
 
-**Eroare „Engine doesn't support WebSocketCapability”:** clientul Ktor pe Android folosește engine-ul **OkHttp** (`ktor-client-okhttp`), nu `ktor-client-android`, deoarece engine-ul Android nu suportă WebSocket.
+8. **Dacă nu merge:** verifică că IP-ul e corect, că desktopul rulează, că portul 8080 nu e blocat; varianta cu **USB** rămâne pentru debugging: `adb reverse tcp:8080 tcp:8080` și în app adresa **`127.0.0.1`**.
+
+**Notă tehnică:** WebSocket-ul merge pe `ws://IP:8080/deepwork`.
 
 ---
 
-## Senzori pe telefon (gesturi)
+## Senzori (telefon fizic)
 
-Implementare: `data/local/.../SensorRepositoryImpl.kt`.
-
-- **Accelerometru:** față în jos, shake, înclinare (pitch).
-- **Giroscop** (`Sensor.TYPE_GYROSCOPE`): răsuciri stânga/dreapta pe axa Z și acumulare pentru ~**360°** într-o singură mișcare de rotire.
-- Emulatorul uneori **nu expune giroscop**; testează pe **telefon fizic** pentru gesturi complete.
+Gestiunile sunt în `data/local/.../SensorRepositoryImpl.kt`: accelerometru (față în jos, shake, înclinare) și giroscop pentru răsuciri și rotație ~360°. Emulatorul adesea nu are giroscop; pentru demo folosește telefonul real.
 
 ---
 
-## Structură module (rezumat)
+## Client WebSocket pe Android
+
+Motorul Ktor folosește **OkHttp** (`ktor-client-okhttp`), nu `ktor-client-android`, pentru că engine-ul Android nu suportă WebSocket.
+
+---
+
+## Structură module (pe scurt)
 
 ```
-app/                 # Entry Android, Hilt, NavHost, drawer
-core/ui/             # Temă Compose DeepWork (culori, tipografie)
-core/common/         # Utilitare comune
-domain/              # Modele, repository interfaces, use case-uri
-data/local/          # Room, DataStore, implementări repository
-data/remote/         # WebSocket client Ktor
-feature/timer|tasks|analytics|settings|pc-remote/
-desktop/             # Companion Compose Desktop + server Ktor
-docs/design-mockups/ # Referințe HTML mockup (nu intră în build)
+app/                 # Android, Hilt, navigare
+core/ui/             # Temă Compose
+domain/              # Modele, use case-uri
+data/local/          # Room, DataStore
+data/remote/         # Client WebSocket
+feature/             # timer, tasks, analytics, settings, pc-remote
+desktop/             # Companion JVM + server Ktor
+docs/                # mockup-uri, prezentări
 ```
 
 ---
 
-## Verificare locală
+## Verificare
 
 ```powershell
 .\gradlew.bat check
@@ -148,6 +117,4 @@ docs/design-mockups/ # Referințe HTML mockup (nu intră în build)
 
 ---
 
-## Licență / notă
-
-Proiect academic; adaptează cheile și endpoint-urile din `build.gradle.kts` / `BuildConfig` înainte de publicare.
+Proiect făcut pentru universitate; înainte de publicare comercială ai roti cheile, endpoint-urile și ai folosi WSS în loc de cleartext pe rețea.
