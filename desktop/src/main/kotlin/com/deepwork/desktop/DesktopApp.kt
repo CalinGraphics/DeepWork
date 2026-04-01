@@ -229,7 +229,9 @@ fun DesktopCompanionApp(
                     Text(
                         when (kind) {
                             DesktopInfoKind.Settings ->
-                                "Serverul WebSocket rulează pe portul 8080. Pornește aplicația înainte de împerechere; pe telefon folosește același rețea sau USB (adb reverse)."
+                                "Serverul WebSocket rulează pe portul 8080. Pornește aplicația înainte de împerechere; pe telefon folosește același rețea sau USB (adb reverse).\n\n" +
+                                    "Strict Focus (implicit activ): ecran complet, mereu deasupra, fereastră neredimensionabilă — îți ține Kara în prim-plan. " +
+                                    "O aplicație Java nu poate bloca Alt+Tab sau notificările Windows ca un „lock” la nivel de sistem; pentru zero notificări folosește „Asistență pentru focus” / Do Not Disturb din Windows."
                             DesktopInfoKind.Notifications ->
                                 "Când telefonul este conectat, gesturile și actualizările de sesiune apar în bara de stare și în jurnalul de conexiune."
                         },
@@ -799,32 +801,21 @@ private fun DesktopFooter(
                         color = Color(0xFF9090A0)
                     )
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            "Strict Focus",
-                            fontSize = 12.sp,
-                            color = if (strictFocusEnabled) DeepIndigo else Color(0xFF9090A0),
-                            fontWeight = if (strictFocusEnabled) FontWeight.SemiBold else FontWeight.Normal
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "Strict Focus",
+                        fontSize = 12.sp,
+                        color = if (strictFocusEnabled) DeepIndigo else Color(0xFF9090A0),
+                        fontWeight = if (strictFocusEnabled) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                    Switch(
+                        checked = strictFocusEnabled,
+                        onCheckedChange = onStrictFocusChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = DeepIndigo,
+                            checkedTrackColor = DeepIndigo.copy(alpha = 0.5f)
                         )
-                        Switch(
-                            checked = strictFocusEnabled,
-                            onCheckedChange = onStrictFocusChange,
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = DeepIndigo,
-                                checkedTrackColor = DeepIndigo.copy(alpha = 0.5f)
-                            )
-                        )
-                    }
-                    if (strictFocusEnabled) {
-                        Text(
-                            "Cu sesiune pornită sau în pauză: ecran complet + mereu deasupra. Pe Windows Alt+Tab rămâne disponibil (nu e lock ca pe Android).",
-                            fontSize = 10.sp,
-                            color = Color(0xFF707080),
-                            modifier = Modifier.padding(top = 4.dp),
-                            textAlign = TextAlign.End
-                        )
-                    }
+                    )
                 }
             }
         }

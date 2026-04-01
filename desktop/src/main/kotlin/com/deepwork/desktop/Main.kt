@@ -1,12 +1,10 @@
 package com.deepwork.desktop
 
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.MutableState
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.yield
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowState
@@ -19,17 +17,17 @@ fun main() = application {
     val ip = getLocalIpAddress()
     DesktopState.setPairingUrl("ws://$ip:8080/deepwork")
 
-    val windowState: WindowState = rememberWindowState()
-    val strictFocusState: MutableState<Boolean> = remember { mutableStateOf(false) }
+    // Strict Focus implicit ON: la pornire intră direct în mod immersiv; îl poți opri din footer.
+    val strictFocusState: MutableState<Boolean> = remember { mutableStateOf(true) }
     val strictFocusEnabled = strictFocusState.value
-    val phase by DesktopLocalSession.phase.collectAsState()
-    // Mod strict cât timp există sesiune activă (rulează sau în pauză), nu doar în Running — altfel la Pause fereastra „cădea” din fullscreen.
-    val strictFocusActive = strictFocusEnabled && phase != DesktopSessionPhase.Idle
+    val strictFocusActive = strictFocusEnabled
+
+    val windowState: WindowState = rememberWindowState(
+        placement = if (strictFocusEnabled) WindowPlacement.Fullscreen else WindowPlacement.Floating
+    )
 
     LaunchedEffect(strictFocusActive) {
-        // Pe Windows nu există echivalent Lock Task ca pe Android (nu putem bloca Alt+Tab la nivel de OS din JVM).
-        // Mod strict = ecran complet + mereu deasupra + fereastră fixă — reduce distragerile, dar nu „încuie” sistemul.
-        delay(32)
+        // Fără delay: aplică imediat schimbarea de placement (Windows poate cădea înapoi pe Maximized).
         runCatching {
             windowState.placement = if (strictFocusActive) {
                 WindowPlacement.Fullscreen
@@ -48,16 +46,20 @@ fun main() = application {
     }
 
     Window(
-        onCloseRequest = {
-            if (!strictFocusActive) {
-                exitApplication()
-            }
-        },
+        onCloseRequest = { exitApplication() },
         title = "Kara Companion",
         state = windowState,
         alwaysOnTop = strictFocusActive,
         resizable = !strictFocusActive
     ) {
+        LaunchedEffect(strictFocusActive) {
+            if (!strictFocusActive) return@LaunchedEffect
+            yield()
+            runCatching {
+                window.toFront()
+                window.requestFocus()
+            }
+        }
         DesktopCompanionAppTheme {
             DesktopCompanionApp(
                 strictFocusEnabled = strictFocusEnabled,
