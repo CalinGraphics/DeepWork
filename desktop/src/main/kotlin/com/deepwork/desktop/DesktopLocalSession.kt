@@ -100,6 +100,14 @@ object DesktopLocalSession {
         _phase.value = DesktopSessionPhase.Paused
     }
 
+    /** Revine la idle cu timpul complet, fără a înregistra sesiune (ca Reset pe Android). */
+    fun reset() {
+        tickJob?.cancel()
+        tickJob = null
+        _phase.value = DesktopSessionPhase.Idle
+        _remainingSeconds.value = _preferredMinutes.value * 60
+    }
+
     fun endSession(reason: SessionEndReason = SessionEndReason.UserEnded) {
         tickJob?.cancel()
         tickJob = null

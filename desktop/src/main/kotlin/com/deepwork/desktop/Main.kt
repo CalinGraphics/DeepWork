@@ -25,10 +25,22 @@ fun main() = application {
     val strictFocusActive = strictFocusEnabled && phase == DesktopSessionPhase.Running
 
     LaunchedEffect(strictFocusActive) {
-        // Fullscreen poate fi instabil pe unele setup-uri Windows/driver.
-        // Maximize + alwaysOnTop e suficient pentru "strict focus" fără crash.
+        // Pe Windows nu există echivalent Lock Task ca pe Android (nu putem bloca Alt+Tab la nivel de OS din JVM).
+        // Mod strict = ecran complet + mereu deasupra + fereastră fixă — reduce distragerile, dar nu „încuie” sistemul.
         runCatching {
-            windowState.placement = if (strictFocusActive) WindowPlacement.Maximized else WindowPlacement.Floating
+            windowState.placement = if (strictFocusActive) {
+                WindowPlacement.Fullscreen
+            } else {
+                WindowPlacement.Floating
+            }
+        }.onFailure {
+            runCatching {
+                windowState.placement = if (strictFocusActive) {
+                    WindowPlacement.Maximized
+                } else {
+                    WindowPlacement.Floating
+                }
+            }
         }
     }
 
@@ -40,7 +52,8 @@ fun main() = application {
         },
         title = "Kara Companion",
         state = windowState,
-        alwaysOnTop = strictFocusActive
+        alwaysOnTop = strictFocusActive,
+        resizable = !strictFocusActive
     ) {
         DesktopCompanionAppTheme {
             DesktopCompanionApp(

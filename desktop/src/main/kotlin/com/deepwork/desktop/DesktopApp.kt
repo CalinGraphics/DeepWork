@@ -146,7 +146,7 @@ fun DesktopCompanionApp(
                                             Modifier.fillMaxWidth(),
                                             verticalArrangement = Arrangement.spacedBy(24.dp)
                                         ) {
-                                            SessionTimerCard(status, connected, pairingUrl)
+                                            SessionTimerCard(status, connected)
                                             ProductivityHeatmapCard()
                                             GestureMapCard(connected, lastGesture)
                                             ConnectionCard(pairingUrl)
@@ -160,7 +160,7 @@ fun DesktopCompanionApp(
                                                 Modifier.weight(2f),
                                                 verticalArrangement = Arrangement.spacedBy(24.dp)
                                             ) {
-                                                SessionTimerCard(status, connected, pairingUrl)
+                                                SessionTimerCard(status, connected)
                                                 ProductivityHeatmapCard()
                                             }
                                             Column(
@@ -297,16 +297,10 @@ private fun DesktopTopBar(
 }
 
 @Composable
-private fun SessionTimerCard(status: String, connected: Boolean, pairingUrl: String) {
+private fun SessionTimerCard(status: String, connected: Boolean) {
     val phase by DesktopLocalSession.phase.collectAsState()
     val preferredMinutes by DesktopLocalSession.preferredMinutes.collectAsState()
     val remaining by DesktopLocalSession.remainingSeconds.collectAsState()
-    val h = remaining / 3600
-    val m = (remaining % 3600) / 60
-    val s = remaining % 60
-    val hStr = h.toString().padStart(2, '0')
-    val mStr = m.toString().padStart(2, '0')
-    val sStr = s.toString().padStart(2, '0')
 
     Card(
         colors = CardDefaults.cardColors(containerColor = SurfaceC),
@@ -344,53 +338,21 @@ private fun SessionTimerCard(status: String, connected: Boolean, pairingUrl: Str
                 letterSpacing = 3.sp,
                 fontSize = 12.sp
             )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TimeDigitBox(hStr, "Hours")
-                Text(":", fontSize = 32.sp, color = Color(0xFF606070), fontWeight = FontWeight.Bold)
-                TimeDigitBox(mStr, "Minutes")
-                Text(":", fontSize = 32.sp, color = Color(0xFF606070), fontWeight = FontWeight.Bold)
-                TimeDigitBox(sStr, "Seconds")
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                when (phase) {
-                    DesktopSessionPhase.Idle -> {
-                        androidx.compose.material3.Button(
-                            onClick = { DesktopLocalSession.startSession() },
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = DeepIndigo)
-                        ) {
-                            Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = Color.White)
-                            Text(" START SESSION (${preferredMinutes} min)", Modifier.padding(start = 6.dp), color = Color.White)
-                        }
-                    }
-                    DesktopSessionPhase.Running -> {
-                        androidx.compose.material3.Button(
-                            onClick = { DesktopLocalSession.pause() },
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = DeepIndigo)
-                        ) {
-                            Icon(Icons.Outlined.Pause, contentDescription = null, tint = Color.White)
-                            Text(" PAUSE", Modifier.padding(start = 6.dp), color = Color.White)
-                        }
-                        OutlinedButton(onClick = { DesktopLocalSession.endSession(SessionEndReason.UserEnded) }) {
-                            Text("END EARLY", color = Color(0xFFC8C8D8))
-                        }
-                    }
-                    DesktopSessionPhase.Paused -> {
-                        androidx.compose.material3.Button(
-                            onClick = { DesktopLocalSession.startSession() },
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = DeepTeal)
-                        ) {
-                            Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = Color.White)
-                            Text(" RESUME", Modifier.padding(start = 6.dp), color = Color.White)
-                        }
-                        OutlinedButton(onClick = { DesktopLocalSession.endSession(SessionEndReason.UserEnded) }) {
-                            Text("END", color = Color(0xFFC8C8D8))
-                        }
-                    }
-                }
-            }
+            DesktopTimerArc(
+                phase = phase,
+                preferredMinutes = preferredMinutes,
+                remainingSeconds = remaining
+            )
+            DesktopTimerActionRow(
+                phase = phase,
+                onStart = { DesktopLocalSession.startSession() },
+                onPause = { DesktopLocalSession.pause() },
+                onResume = { DesktopLocalSession.startSession() },
+                onEnd = { DesktopLocalSession.endSession(SessionEndReason.UserEnded) },
+                onReset = { DesktopLocalSession.reset() }
+            )
+            DesktopStreakSummaryRow()
+            DesktopActiveTaskPlaceholder()
             Text(
                 text = when {
                     connected -> "Telefon conectat — $status"
@@ -403,23 +365,6 @@ private fun SessionTimerCard(status: String, connected: Boolean, pairingUrl: Str
                 modifier = Modifier.fillMaxWidth()
             )
         }
-    }
-}
-
-@Composable
-private fun TimeDigitBox(digit: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(
-            Modifier
-                .width(72.dp)
-                .height(88.dp)
-                .background(SurfaceVar, RoundedCornerShape(12.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(digit, fontSize = 36.sp, fontWeight = FontWeight.Bold)
-        }
-        Text(label.uppercase(), fontSize = 10.sp, color = Color(0xFF707080), fontWeight = FontWeight.Medium)
     }
 }
 
@@ -818,21 +763,32 @@ private fun DesktopFooter(
                         color = Color(0xFF9090A0)
                     )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        "Strict Focus",
-                        fontSize = 12.sp,
-                        color = if (strictFocusEnabled) DeepIndigo else Color(0xFF9090A0),
-                        fontWeight = if (strictFocusEnabled) FontWeight.SemiBold else FontWeight.Normal
-                    )
-                    Switch(
-                        checked = strictFocusEnabled,
-                        onCheckedChange = onStrictFocusChange,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = DeepIndigo,
-                            checkedTrackColor = DeepIndigo.copy(alpha = 0.5f)
+                Column(horizontalAlignment = Alignment.End) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            "Strict Focus",
+                            fontSize = 12.sp,
+                            color = if (strictFocusEnabled) DeepIndigo else Color(0xFF9090A0),
+                            fontWeight = if (strictFocusEnabled) FontWeight.SemiBold else FontWeight.Normal
                         )
-                    )
+                        Switch(
+                            checked = strictFocusEnabled,
+                            onCheckedChange = onStrictFocusChange,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = DeepIndigo,
+                                checkedTrackColor = DeepIndigo.copy(alpha = 0.5f)
+                            )
+                        )
+                    }
+                    if (strictFocusEnabled) {
+                        Text(
+                            "În timpul sesiunii: ecran complet + mereu deasupra. Pe Windows nu se pot bloca celelalte aplicații ca pe Android (Alt+Tab rămâne).",
+                            fontSize = 10.sp,
+                            color = Color(0xFF707080),
+                            modifier = Modifier.padding(top = 4.dp),
+                            textAlign = TextAlign.End
+                        )
+                    }
                 }
             }
         }
