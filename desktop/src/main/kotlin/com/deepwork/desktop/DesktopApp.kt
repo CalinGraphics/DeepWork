@@ -390,11 +390,16 @@ private fun SessionTimerCard(status: String, connected: Boolean) {
 private fun ProductivityHeatmapCard() {
     val gami by DesktopGamification.state.collectAsState()
     var range by remember { mutableStateOf(HeatmapRange.WEEKLY) }
-    val barHeights = if (range == HeatmapRange.WEEKLY) weeklyHeights(gami.completedSessionEpochMillis) else monthlyHeights(gami.completedSessionEpochMillis)
-    val barLabels = if (range == HeatmapRange.WEEKLY) {
-        weekLabels
+    val millis = gami.completedSessionEpochMillis
+    val barHeights: List<Float>
+    val barLabels: List<String>
+    if (range == HeatmapRange.WEEKLY) {
+        barHeights = weeklyHeights(millis)
+        barLabels = weekLabels
     } else {
-        listOf("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")
+        val monthly = monthlyHeatmapData(millis)
+        barHeights = monthly.first
+        barLabels = monthly.second
     }
     val avg = ((barHeights.sum() / barHeights.size) * 100).toInt().coerceIn(0, 100)
     val mainPct = "$avg%"
@@ -725,16 +730,26 @@ private fun weeklyHeights(millis: List<Long>): List<Float> {
     return counts.map { ((it.toFloat() / max) * 0.8f + 0.2f).coerceIn(0.2f, 1f) }
 }
 
-private fun monthlyHeights(millis: List<Long>): List<Float> {
-    val now = java.time.LocalDate.now().withDayOfMonth(1)
+/**
+ * Ultimele 12 luni (luna curentă inclusiv), aliniat la stânga → dreapta.
+ * Index 0 = acum 11 luni, index 11 = luna curentă. Etichete = numele scurt al lunii (locale).
+ */
+private fun monthlyHeatmapData(millis: List<Long>): Pair<List<Float>, List<String>> {
+    val zone = java.time.ZoneId.systemDefault()
+    val today = java.time.LocalDate.now(zone)
+    val windowStart = today.withDayOfMonth(1).minusMonths(11)
     val counts = IntArray(12)
     millis.forEach {
-        val d = java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate().withDayOfMonth(1)
-        val diff = java.time.temporal.ChronoUnit.MONTHS.between(d, now).toInt()
-        if (diff in 0..11) counts[11 - diff]++
+        val d = java.time.Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
+        val sessionMonthStart = d.withDayOfMonth(1)
+        val idx = java.time.temporal.ChronoUnit.MONTHS.between(windowStart, sessionMonthStart).toInt()
+        if (idx in 0..11) counts[idx]++
     }
     val max = counts.maxOrNull()?.coerceAtLeast(1) ?: 1
-    return counts.map { ((it.toFloat() / max) * 0.8f + 0.2f).coerceIn(0.2f, 1f) }
+    val heights = counts.map { ((it.toFloat() / max) * 0.8f + 0.2f).coerceIn(0.2f, 1f) }
+    val fmt = java.time.format.DateTimeFormatter.ofPattern("LLL", java.util.Locale.getDefault())
+    val labels = List(12) { i -> windowStart.plusMonths(i.toLong()).format(fmt) }
+    return heights to labels
 }
 
 @Composable
@@ -803,7 +818,7 @@ private fun DesktopFooter(
                     }
                     if (strictFocusEnabled) {
                         Text(
-                            "În timpul sesiunii: ecran complet + mereu deasupra. Pe Windows nu se pot bloca celelalte aplicații ca pe Android (Alt+Tab rămâne).",
+                            "Cu sesiune pornită sau în pauză: ecran complet + mereu deasupra. Pe Windows Alt+Tab rămâne disponibil (nu e lock ca pe Android).",
                             fontSize = 10.sp,
                             color = Color(0xFF707080),
                             modifier = Modifier.padding(top = 4.dp),

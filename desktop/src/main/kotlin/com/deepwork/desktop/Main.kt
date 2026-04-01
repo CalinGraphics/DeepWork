@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.MutableState
+import kotlinx.coroutines.delay
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowState
@@ -22,11 +23,13 @@ fun main() = application {
     val strictFocusState: MutableState<Boolean> = remember { mutableStateOf(false) }
     val strictFocusEnabled = strictFocusState.value
     val phase by DesktopLocalSession.phase.collectAsState()
-    val strictFocusActive = strictFocusEnabled && phase == DesktopSessionPhase.Running
+    // Mod strict cât timp există sesiune activă (rulează sau în pauză), nu doar în Running — altfel la Pause fereastra „cădea” din fullscreen.
+    val strictFocusActive = strictFocusEnabled && phase != DesktopSessionPhase.Idle
 
     LaunchedEffect(strictFocusActive) {
         // Pe Windows nu există echivalent Lock Task ca pe Android (nu putem bloca Alt+Tab la nivel de OS din JVM).
         // Mod strict = ecran complet + mereu deasupra + fereastră fixă — reduce distragerile, dar nu „încuie” sistemul.
+        delay(32)
         runCatching {
             windowState.placement = if (strictFocusActive) {
                 WindowPlacement.Fullscreen
