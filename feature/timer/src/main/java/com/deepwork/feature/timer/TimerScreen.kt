@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -65,6 +66,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.deepwork.core.ui.theme.DeepIndigo
 import com.deepwork.core.ui.theme.DeepTeal
@@ -106,6 +108,15 @@ fun TimerScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
+                .pointerInput(uiState, sessionDuration) {
+                    detectTapGestures(
+                        onDoubleTap = {
+                            if (uiState is TimerState.Idle) {
+                                viewModel.startSession(sessionDuration)
+                            }
+                        }
+                    )
+                }
         ) {
             BoxWithConstraints(
                 modifier = Modifier

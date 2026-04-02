@@ -523,7 +523,6 @@ private fun GestureMapCard(connected: Boolean, lastGesture: String?) {
             lastGesture?.let {
                 Text("Ultimul gest: $it", fontSize = 12.sp, color = DeepTeal)
             }
-            GestureRow(Icons.Outlined.ScreenRotation, "Rotate Phone", "Change Ambient Volume")
             GestureRow(Icons.Outlined.Smartphone, "Face Down", "Pune pauză la sesiune")
             GestureRow(Icons.Outlined.Smartphone, "Ridică telefonul", "Reluare din pauză")
             GestureRow(Icons.Outlined.TouchApp, "Shake", "Reset sesiune")

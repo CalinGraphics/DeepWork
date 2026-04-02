@@ -63,7 +63,6 @@ fun PcRemoteScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Gesture Map", fontWeight = FontWeight.SemiBold)
                 }
-                GestureRow("Rotate Phone", "Volum ambient")
                 GestureRow("Face Down", "Pauză sesiune")
                 GestureRow("Ridică telefonul", "Reluare din pauză")
                 GestureRow("Shake", "Reset sesiune")
@@ -150,7 +149,7 @@ fun PcRemoteScreen(
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF34D399)
                 )
-                Text("Gestiuni HCI active: rotire telefon, față în jos, shake etc. — mesajele merg pe WebSocket către companion.")
+                Text("Gestiuni HCI active: față în jos/sus, shake, double tap — mesajele merg pe WebSocket către companion.")
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = { viewModel.disconnect() },
