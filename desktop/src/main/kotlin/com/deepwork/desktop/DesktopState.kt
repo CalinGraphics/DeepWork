@@ -17,9 +17,15 @@ object DesktopState {
 
     private val _pairingUrl = MutableStateFlow("")
     val pairingUrl: StateFlow<String> = _pairingUrl.asStateFlow()
+    private val _usbBridgeStatus = MutableStateFlow("USB bridge: pending")
+    val usbBridgeStatus: StateFlow<String> = _usbBridgeStatus.asStateFlow()
 
     fun setPairingUrl(url: String) {
         _pairingUrl.value = url
+    }
+
+    fun setUsbBridgeStatus(status: String) {
+        _usbBridgeStatus.value = status
     }
 
     fun updateStatus(message: String) {

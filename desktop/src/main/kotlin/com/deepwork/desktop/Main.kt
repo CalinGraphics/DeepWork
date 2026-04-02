@@ -4,6 +4,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.MutableState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
@@ -16,6 +17,12 @@ fun main() = application {
     startServer()
     val ip = getLocalIpAddress()
     DesktopState.setPairingUrl("ws://$ip:8080/deepwork")
+    LaunchedEffect(Unit) {
+        while (true) {
+            DesktopState.setUsbBridgeStatus(DesktopUsbBridge.ensureAdbReverse())
+            delay(15_000)
+        }
+    }
 
     // Strict Focus implicit ON: la pornire intră direct în mod immersiv; îl poți opri din footer.
     val strictFocusState: MutableState<Boolean> = remember { mutableStateOf(true) }

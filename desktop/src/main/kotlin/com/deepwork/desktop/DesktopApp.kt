@@ -108,6 +108,7 @@ fun DesktopCompanionApp(
     val status by DesktopState.status.collectAsState()
     val connected by DesktopState.connected.collectAsState()
     val pairingUrl by DesktopState.pairingUrl.collectAsState()
+    val usbBridgeStatus by DesktopState.usbBridgeStatus.collectAsState()
     val lastGesture by DesktopState.lastGesture.collectAsState()
     var mainTab by remember { mutableStateOf(DesktopMainTab.Dashboard) }
     var infoDialog by remember { mutableStateOf<DesktopInfoKind?>(null) }
@@ -153,7 +154,7 @@ fun DesktopCompanionApp(
                                             SessionTimerCard(status, connected)
                                             ProductivityHeatmapCard()
                                             GestureMapCard(connected, lastGesture)
-                                            ConnectionCard(pairingUrl)
+                                            ConnectionCard(pairingUrl, usbBridgeStatus)
                                         }
                                     } else {
                                         Row(
@@ -172,7 +173,7 @@ fun DesktopCompanionApp(
                                                 verticalArrangement = Arrangement.spacedBy(24.dp)
                                             ) {
                                                 GestureMapCard(connected, lastGesture)
-                                                ConnectionCard(pairingUrl)
+                                                ConnectionCard(pairingUrl, usbBridgeStatus)
                                             }
                                         }
                                     }
@@ -554,7 +555,7 @@ private fun GestureRow(
 }
 
 @Composable
-private fun ConnectionCard(pairingUrl: String) {
+private fun ConnectionCard(pairingUrl: String, usbBridgeStatus: String) {
     Card(
         colors = CardDefaults.cardColors(containerColor = SurfaceC),
         shape = RoundedCornerShape(12.dp),
@@ -584,6 +585,12 @@ private fun ConnectionCard(pairingUrl: String) {
                 "Conecteaza manual din telefon folosind IP-ul de mai sus sau USB (adb reverse).",
                 fontSize = 12.sp,
                 color = Color(0xFF9090A0),
+                textAlign = TextAlign.Center
+            )
+            Text(
+                usbBridgeStatus,
+                fontSize = 11.sp,
+                color = if (usbBridgeStatus.contains("ready", ignoreCase = true)) Color(0xFF34D399) else Color(0xFF9090A0),
                 textAlign = TextAlign.Center
             )
         }
