@@ -18,6 +18,7 @@ fun main() = application {
     val ip = getLocalIpAddress()
     DesktopState.setPairingUrl("ws://$ip:8080/deepwork")
     LaunchedEffect(Unit) {
+        DesktopSessionAlerts.ensureTray()
         while (true) {
             DesktopState.setUsbBridgeStatus(DesktopUsbBridge.ensureAdbReverse())
             delay(15_000)

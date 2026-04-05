@@ -5,7 +5,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -38,15 +43,40 @@ class TimerNotifier @Inject constructor(
     }
 
     fun showSessionCompleted(minutes: Int) {
+        playCompletionSound()
         runCatching { haptics.playDoubleBuzz() }
         notify(
             id = 1103,
             title = "Sesiune finalizata",
-            body = "Felicitari! Ai completat $minutes minute de focus."
+            body = "Felicitari! Ai completat $minutes minute de focus.",
+            soundUri = completionSoundUri()
         )
     }
 
-    private fun notify(id: Int, title: String, body: String) {
+    private fun completionSoundUri(): Uri =
+        RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+    private fun playCompletionSound() {
+        runCatching {
+            val uri = completionSoundUri()
+            val ringtone = RingtoneManager.getRingtone(context, uri) ?: return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                ringtone.isLooping = false
+            }
+            ringtone.play()
+            Handler(Looper.getMainLooper()).postDelayed({
+                runCatching { ringtone.stop() }
+            }, 2800L)
+        }
+    }
+
+    private fun notify(
+        id: Int,
+        title: String,
+        body: String,
+        soundUri: Uri? = null
+    ) {
         createChannelIfNeeded()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = ContextCompat.checkSelfPermission(
@@ -56,15 +86,21 @@ class TimerNotifier @Inject constructor(
             if (!granted) return
         }
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(android.app.Notification.CATEGORY_EVENT)
             .setAutoCancel(true)
-            .build()
 
-        manager.notify(id, notification)
+        if (soundUri != null) {
+            builder.setSound(soundUri)
+        } else {
+            builder.setDefaults(NotificationCompat.DEFAULT_SOUND)
+        }
+
+        manager.notify(id, builder.build())
     }
 
     private fun createChannelIfNeeded() {
@@ -77,6 +113,17 @@ class TimerNotifier @Inject constructor(
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "Notificari pentru sesiuni si focus."
+            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            if (uri != null) {
+                setSound(
+                    uri,
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+            }
+            enableVibration(true)
         }
         notificationManager.createNotificationChannel(channel)
     }

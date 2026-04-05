@@ -9,6 +9,7 @@ import com.deepwork.data.remote.model.MessageType
 import com.deepwork.domain.model.Action
 import com.deepwork.domain.model.GestureType
 import com.deepwork.domain.model.Task
+import com.deepwork.core.common.FocusSessionGate
 import com.deepwork.domain.model.TimerState
 import com.deepwork.domain.repository.SensorRepository
 import com.deepwork.domain.repository.SessionRepository
@@ -25,7 +26,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -83,6 +83,12 @@ class TimerViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _streak.value = calculateStreakUseCase()
+        }
+        viewModelScope.launch {
+            uiState.collect { state ->
+                val active = state is TimerState.Running || state is TimerState.Paused
+                FocusSessionGate.setFocusSessionActive(active)
+            }
         }
         viewModelScope.launch {
             sensorRepository.getGestureFlow().collect { gesture ->
@@ -171,6 +177,19 @@ class TimerViewModel @Inject constructor(
             completeCurrentSession(completedFull = true)
             _uiState.update { TimerState.Completed(plannedSessionMinutes, null) }
             timerNotifier.showSessionCompleted(plannedSessionMinutes)
+            notifyDesktopSessionCompleted(plannedSessionMinutes)
+        }
+    }
+
+    private fun notifyDesktopSessionCompleted(minutes: Int) {
+        viewModelScope.launch {
+            webSocketClient.sendMessage(
+                DeepWorkMessage(
+                    type = MessageType.TIMER_COMPLETED,
+                    payload = JsonPrimitive(minutes.coerceIn(1, 120)),
+                    deviceId = "android_client"
+                )
+            )
         }
     }
 

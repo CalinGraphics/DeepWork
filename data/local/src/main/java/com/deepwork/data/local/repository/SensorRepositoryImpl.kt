@@ -17,7 +17,7 @@ import kotlin.math.sqrt
 
 /**
  * Senzori reali pe hardware:
- * - **Accelerometru**: față în jos (pauză), ridicare după față în jos (reluare), shake (reset), înclinare față/spate (pitch).
+ * - **Accelerometru**: față pe masă (pornire/revenire din pauză), față spre tavan (pauză), shake (reset), înclinare față/spate (pitch).
  * - Giroscopul nu mai este folosit pentru controlul timerului (funcția Rotate Phone a fost eliminată).
  *
  * Emulatorul adesea nu are giroscop; atunci rămân doar gesturile pe accelerometru.

@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Kara</string>
+    <string name="accessibility_focus_block_desc">Kara readuce aplicația în prim-plan când deschizi o aplicație blocată în timpul unei sesiuni de focus active. Activează doar dacă ai ales aplicații de blocat în Setări.</string>
 </resources>

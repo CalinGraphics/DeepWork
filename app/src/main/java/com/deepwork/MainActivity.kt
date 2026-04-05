@@ -2,7 +2,6 @@ package com.deepwork
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
@@ -37,14 +36,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -60,7 +54,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.deepwork.core.ui.theme.DeepWorkTheme
-import com.deepwork.core.ui.util.HapticManager
 import com.deepwork.feature.analytics.AchievementsScreen
 import com.deepwork.feature.analytics.AnalyticsScreen
 import com.deepwork.feature.pcremote.PcRemoteScreen
@@ -80,14 +73,12 @@ class MainActivity : ComponentActivity() {
             DeepWorkTheme {
                 val mainViewModel: MainViewModel = hiltViewModel()
                 val prefs by mainViewModel.preferences.collectAsState()
-                val strictFocusActive by mainViewModel.strictFocusActive.collectAsState()
                 if (!prefs.onboardingCompleted) {
                     KaraOnboardingScreen(
                         onComplete = { mainViewModel.completeOnboarding() },
                         onSkip = { mainViewModel.completeOnboarding() }
                     )
                 } else {
-                    StrictFocusGuard(strictFocusActive = strictFocusActive)
                     DeepWorkAppContent()
                 }
             }
@@ -107,30 +98,6 @@ sealed class BottomDestination(
 
 private const val ROUTE_PC_REMOTE = "pcremote"
 private const val ROUTE_NOTIFICATIONS = "notifications"
-
-@Composable
-private fun StrictFocusGuard(strictFocusActive: Boolean) {
-    val context = LocalContext.current
-    val activity = context as? ComponentActivity ?: return
-    val haptics = remember { HapticManager(context.applicationContext) }
-    var strictWasActive by remember { mutableStateOf(false) }
-
-    BackHandler(enabled = strictFocusActive) {
-        // Strict focus: block back navigation while a session is active.
-    }
-
-    LaunchedEffect(strictFocusActive) {
-        if (strictWasActive && !strictFocusActive) {
-            haptics.playHeavyClick()
-        }
-        if (strictFocusActive) {
-            runCatching { activity.startLockTask() }
-        } else {
-            runCatching { activity.stopLockTask() }
-        }
-        strictWasActive = strictFocusActive
-    }
-}
 
 @Composable
 fun DeepWorkAppContent() {

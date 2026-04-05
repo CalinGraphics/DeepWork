@@ -115,6 +115,13 @@ fun DesktopCompanionApp(
     val dashboardListState = rememberLazyListState()
     val insightsListState = rememberLazyListState()
 
+    LaunchedEffect(Unit) {
+        DesktopSessionAlerts.ensureTray()
+        DesktopLocalSession.sessionJustCompletedMinutes.collect { minutes ->
+            DesktopSessionAlerts.notifySessionCompleted(minutes)
+        }
+    }
+
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val padH = when {
@@ -523,8 +530,8 @@ private fun GestureMapCard(connected: Boolean, lastGesture: String?) {
             lastGesture?.let {
                 Text("Ultimul gest: $it", fontSize = 12.sp, color = DeepTeal)
             }
-            GestureRow(Icons.Outlined.Smartphone, "Face Down", "Pune pauză la sesiune")
-            GestureRow(Icons.Outlined.Smartphone, "Ridică telefonul", "Reluare din pauză")
+            GestureRow(Icons.Outlined.Smartphone, "Față pe masă", "Pornește / reia din pauză")
+            GestureRow(Icons.Outlined.Smartphone, "Față spre tavan", "Pune pauză la sesiune")
             GestureRow(Icons.Outlined.TouchApp, "Shake", "Reset sesiune")
             GestureRow(Icons.Outlined.TouchApp, "Double Tap", "Pornește sesiunea")
         }

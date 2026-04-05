@@ -6,8 +6,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -68,6 +71,9 @@ object DesktopLocalSession {
 
     private val _sessionHistory = MutableStateFlow<List<DesktopSessionLog>>(loaded.history.take(100))
     val sessionHistory: StateFlow<List<DesktopSessionLog>> = _sessionHistory.asStateFlow()
+
+    private val _sessionJustCompletedMinutes = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+    val sessionJustCompletedMinutes: SharedFlow<Int> = _sessionJustCompletedMinutes.asSharedFlow()
 
     fun setPreferredMinutes(minutes: Int, fromRemote: Boolean = false) {
         val v = minutes.coerceIn(5, 120)
@@ -141,6 +147,11 @@ object DesktopLocalSession {
             SessionEndReason.None -> return
         }
         logSession(msg)
+        if (reason == SessionEndReason.Completed) {
+            scope.launch {
+                _sessionJustCompletedMinutes.emit(planned / 60)
+            }
+        }
     }
 
     fun applyRemoteMessage(msg: DeepWorkMessage) {
@@ -148,6 +159,12 @@ object DesktopLocalSession {
             MessageType.TIMER_START -> startSession()
             MessageType.TIMER_PAUSE -> pause()
             MessageType.TIMER_STOP -> endSession(SessionEndReason.Remote)
+            MessageType.TIMER_COMPLETED -> {
+                val minutes = (msg.payload as? JsonPrimitive)?.content?.toIntOrNull()?.coerceIn(1, 120)
+                    ?: _preferredMinutes.value
+                DesktopSessionAlerts.ensureTray()
+                DesktopSessionAlerts.notifySessionCompleted(minutes)
+            }
             MessageType.TIMER_SYNC -> {
                 val minutes = (msg.payload as? JsonPrimitive)?.content?.toIntOrNull()?.coerceIn(5, 120)
                     ?: return

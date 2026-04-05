@@ -7,8 +7,10 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
@@ -30,6 +32,7 @@ class UserPreferencesRepository @Inject constructor(
         val SESSION_DURATION = intPreferencesKey("session_duration")
         val TOTAL_XP = intPreferencesKey("total_xp")
         val ACTIVE_TASK_ID = stringPreferencesKey("active_task_id")
+        val BLOCKED_APP_PACKAGES = stringSetPreferencesKey("blocked_app_packages")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = dataStore.data.map { preferences ->
@@ -48,6 +51,23 @@ class UserPreferencesRepository @Inject constructor(
     /** Task id chosen for the timer; when unset, timer falls back to first incomplete task. */
     val activeTaskIdFlow: Flow<String?> = dataStore.data.map { preferences ->
         preferences[PreferencesKeys.ACTIVE_TASK_ID]?.takeIf { it.isNotBlank() }
+    }
+
+    val blockedAppPackagesFlow: Flow<Set<String>> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.BLOCKED_APP_PACKAGES] ?: emptySet()
+    }
+
+    suspend fun getBlockedAppPackagesOnce(): Set<String> =
+        dataStore.data.first()[PreferencesKeys.BLOCKED_APP_PACKAGES] ?: emptySet()
+
+    suspend fun setBlockedAppPackages(packages: Set<String>) {
+        dataStore.edit { prefs ->
+            if (packages.isEmpty()) {
+                prefs.remove(PreferencesKeys.BLOCKED_APP_PACKAGES)
+            } else {
+                prefs[PreferencesKeys.BLOCKED_APP_PACKAGES] = packages
+            }
+        }
     }
 
     suspend fun setActiveTaskId(id: String?) {

@@ -16,6 +16,7 @@ enum class MessageType {
     TIMER_START,
     TIMER_PAUSE,
     TIMER_STOP,
+    TIMER_COMPLETED,
     TIMER_SYNC,
     GYRO_DATA,
     GESTURE_ACTION,

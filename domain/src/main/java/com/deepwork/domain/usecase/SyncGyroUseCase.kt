@@ -27,8 +27,8 @@ class SyncGyroUseCase @Inject constructor() {
         return when (gesture) {
             GestureType.ROTATE_LEFT_45 -> Action.None
             GestureType.ROTATE_RIGHT_45 -> Action.None
-            GestureType.FACE_DOWN -> Action.PauseSession
-            GestureType.FACE_UP -> Action.ResumeSession
+            GestureType.FACE_DOWN -> Action.StartSession
+            GestureType.FACE_UP -> Action.PauseSession
             GestureType.SHAKE -> Action.ResetSession
             GestureType.TILT_UP_30 -> Action.ShowStats
             GestureType.TILT_DOWN_30 -> Action.HideStats
