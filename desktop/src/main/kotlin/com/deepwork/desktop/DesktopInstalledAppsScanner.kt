@@ -15,10 +15,8 @@ data class DesktopInstalledAppRow(
 )
 
 /**
- * Citește aplicații instalate din Start Menu shortcuts (.lnk → TargetPath). Doar Windows.
- *
- * Motivație: lista din registry include frecvent uninstallers/setup/update. Shortcut-urile corespund mai bine
- * listei „Aplicații instalate” din UI-ul Windows și dau un .exe concret pe care îl putem bloca.
+ * Citește aplicații instalate Windows și le mapează la executabile.
+ * Sursa principală: Start Menu shortcuts; fallback/completează din registry.
  */
 object DesktopInstalledAppsScanner {
 
@@ -31,31 +29,74 @@ object DesktopInstalledAppsScanner {
         runCatching {
             val script = """
                 ${'$'}startDirs = @(
-                  \"${'$'}env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\",
-                  \"${'$'}env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\\"
+                  "${'$'}env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs",
+                  "${'$'}env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs"
                 )
-                ${'$'}shell = New-Object -ComObject WScript.Shell
-                ${'$'}rows = @()
-                foreach (${'$'}dir in ${'$'}startDirs) {
-                  if (-not (Test-Path ${'$'}dir)) { continue }
-                  ${'$'}lnks = Get-ChildItem -Path ${'$'}dir -Recurse -Filter *.lnk -ErrorAction SilentlyContinue
-                  foreach (${'$'}l in ${'$'}lnks) {
+                ${'$'}regKeys = @(
+                  'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',
+                  'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',
+                  'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'
+                )
+
+                function Is-BadExe([string]${'$'}exe) {
+                  if (-not ${'$'}exe) { return ${'$'}true }
+                  ${'$'}x = ${'$'}exe.ToLowerInvariant()
+                  if (${'$'}x -match '^(setup|unins|uninstall|update|updater|installer)') { return ${'$'}true }
+                  if (${'$'}x -match '.*(setup|unins|uninstall|update|updater|installer)\\.exe${'$'}') { return ${'$'}true }
+                  return ${'$'}false
+                }
+
+                ${'$'}rows = New-Object System.Collections.Generic.List[object]
+                ${'$'}seen = New-Object 'System.Collections.Generic.HashSet[string]'
+
+                # 1) Start menu shortcuts (installed apps users actually launch)
+                try {
+                  ${'$'}shell = New-Object -ComObject WScript.Shell
+                  foreach (${'$'}dir in ${'$'}startDirs) {
+                    if (-not (Test-Path ${'$'}dir)) { continue }
+                    ${'$'}lnks = Get-ChildItem -Path ${'$'}dir -Recurse -Filter *.lnk -ErrorAction SilentlyContinue
+                    foreach (${'$'}l in ${'$'}lnks) {
+                      try {
+                        ${'$'}sc = ${'$'}shell.CreateShortcut(${'$'}l.FullName)
+                        ${'$'}target = ${'$'}sc.TargetPath
+                        if (-not ${'$'}target) { continue }
+                        if (-not ${'$'}target.ToLowerInvariant().EndsWith('.exe')) { continue }
+                        ${'$'}exe = [System.IO.Path]::GetFileName(${'$'}target).ToLowerInvariant()
+                        if (Is-BadExe ${'$'}exe) { continue }
+                        ${'$'}name = [System.IO.Path]::GetFileNameWithoutExtension(${'$'}l.Name)
+                        if (-not ${'$'}name) { continue }
+                        ${'$'}k = "${'$'}name|${'$'}exe"
+                        if (${'$'}seen.Add(${'$'}k)) {
+                          ${'$'}rows.Add([PSCustomObject]@{ name = ${'$'}name; exe = ${'$'}exe })
+                        }
+                      } catch { }
+                    }
+                  }
+                } catch { }
+
+                # 2) Registry fallback/completion (for apps without shortcuts)
+                foreach (${'$'}k in ${'$'}regKeys) {
+                  ${'$'}items = Get-ItemProperty ${'$'}k -ErrorAction SilentlyContinue | Where-Object { ${'$'}_.DisplayName -and ${'$'}_.DisplayIcon }
+                  foreach (${'$'}p in ${'$'}items) {
                     try {
-                      ${'$'}sc = ${'$'}shell.CreateShortcut(${'$'}l.FullName)
-                      ${'$'}target = ${'$'}sc.TargetPath
-                      if (-not ${'$'}target) { continue }
-                      if (-not ${'$'}target.ToLower().EndsWith('.exe')) { continue }
-                      ${'$'}exe = [System.IO.Path]::GetFileName(${'$'}target).ToLowerInvariant()
-                      # filtrează instalatori/updaters/uninstallers
-                      if (${'$'}exe -match '^(setup|unins|uninstall|update|updater|installer)') { continue }
-                      if (${'$'}exe -match '.*(setup|unins|uninstall|update|updater|installer)\\.exe${'$'}') { continue }
-                      ${'$'}name = [System.IO.Path]::GetFileNameWithoutExtension(${'$'}l.Name)
+                      ${'$'}icon = (${'$'}p.DisplayIcon -replace '^"+|"+${'$'}', '') -replace ',\d+${'$'}',''
+                      if (-not ${'$'}icon) { continue }
+                      ${'$'}icon = ${'$'}icon -replace '"',''
+                      if (-not ${'$'}icon.ToLowerInvariant().EndsWith('.exe')) { continue }
+                      ${'$'}exe = [System.IO.Path]::GetFileName(${'$'}icon).ToLowerInvariant()
+                      if (Is-BadExe ${'$'}exe) { continue }
+                      ${'$'}name = [string]${'$'}p.DisplayName
                       if (-not ${'$'}name) { continue }
-                      ${'$'}rows += [PSCustomObject]@{ name = ${'$'}name; exe = ${'$'}exe }
+                      ${'$'}k2 = "${'$'}name|${'$'}exe"
+                      if (${'$'}seen.Add(${'$'}k2)) {
+                        ${'$'}rows.Add([PSCustomObject]@{ name = ${'$'}name; exe = ${'$'}exe })
+                      }
                     } catch { }
                   }
                 }
-                @(${'$'}rows) | Sort-Object name -Unique | ConvertTo-Json -Compress -Depth 4
+
+                ${'$'}out = @(${'$'}rows) | Sort-Object name -Unique
+                if (${'$'}out.Count -eq 0) { "[]" } else { ${'$'}out | ConvertTo-Json -Compress -Depth 4 }
             """.trimIndent()
 
             val f = File.createTempFile("kara-scan", ".ps1")
