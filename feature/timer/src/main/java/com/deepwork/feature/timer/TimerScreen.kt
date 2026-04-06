@@ -8,6 +8,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -59,6 +64,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -242,82 +248,185 @@ fun TimerArc(uiState: TimerState, idleDurationMinutes: Int = 25) {
 
     val trackColor = Color.White.copy(alpha = 0.06f)
     val sizeDp = 264.dp
+    val runningPulse = uiState is TimerState.Running
+    val transition = rememberInfiniteTransition(label = "timerEcg")
+    val pulseA = transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseA"
+    ).value
+    val pulseB = transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseB"
+    ).value
 
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(sizeDp)) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val stroke = 10.dp.toPx()
-            val arcSize = Size(size.width - stroke, size.height - stroke)
-            val topLeft = Offset(stroke / 2, stroke / 2)
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            CardioWave(
+                visible = runningPulse,
+                travelAlpha = pulseA,
+                mirror = false,
+                modifier = Modifier.size(width = 110.dp, height = 56.dp)
+            )
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(sizeDp)) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val stroke = 10.dp.toPx()
+                    val arcSize = Size(size.width - stroke, size.height - stroke)
+                    val topLeft = Offset(stroke / 2, stroke / 2)
 
-            drawArc(
-                color = trackColor,
-                startAngle = 0f,
-                sweepAngle = 360f,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
+                    drawArc(
+                        color = trackColor,
+                        startAngle = 0f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = stroke, cap = StrokeCap.Round)
+                    )
+
+                    val sweep = 360f * progress.coerceIn(0f, 1f)
+                    drawArc(
+                        brush = Brush.sweepGradient(
+                            colors = listOf(DeepIndigo, DeepTeal, DeepIndigo),
+                            center = Offset(size.width / 2f, size.height / 2f)
+                        ),
+                        startAngle = -90f,
+                        sweepAngle = sweep,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = stroke * 0.85f, cap = StrokeCap.Round)
+                    )
+
+                    val radius = size.minDimension / 2f - stroke * 0.35f
+                    val dotCenter = Offset(size.width / 2f, size.height / 2f - radius)
+                    drawCircle(
+                        color = DeepTeal,
+                        radius = 5.dp.toPx(),
+                        center = dotCenter
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    AnimatedContent(
+                        targetState = timeText,
+                        transitionSpec = {
+                            if (targetState > initialState) {
+                                slideInVertically { height -> height } + fadeIn() togetherWith
+                                    slideOutVertically { height -> -height } + fadeOut()
+                            } else {
+                                slideInVertically { height -> -height } + fadeIn() togetherWith
+                                    slideOutVertically { height -> height } + fadeOut()
+                            } using SizeTransform(clip = false)
+                        },
+                        label = "timeText"
+                    ) { targetTime ->
+                        Text(
+                            text = targetTime,
+                            style = MaterialTheme.typography.displayLarge.copy(
+                                fontWeight = FontWeight.Light,
+                                fontSize = 52.sp
+                            )
+                        )
+                    }
+                    Text(
+                        text = if (uiState is TimerState.Idle) "Remaining" else when (uiState) {
+                            is TimerState.Running -> "Remaining"
+                            is TimerState.Paused -> "Paused"
+                            is TimerState.Completed -> "Done"
+                            else -> "Remaining"
+                        },
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            letterSpacing = 2.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
+            }
+            CardioWave(
+                visible = runningPulse,
+                travelAlpha = pulseB,
+                mirror = true,
+                modifier = Modifier.size(width = 110.dp, height = 56.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CardioWave(
+    visible: Boolean,
+    travelAlpha: Float,
+    mirror: Boolean,
+    modifier: Modifier = Modifier
+) {
+    if (!visible) {
+        Spacer(modifier)
+        return
+    }
+    val motion = rememberInfiniteTransition(label = "ecgWave")
+    val shift = motion.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1300),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ecgShift"
+    ).value
+    Canvas(modifier = modifier) {
+        val cycle = size.width * 0.62f
+        val base = size.height * 0.52f
+        val stroke = 2.2.dp.toPx()
+        val dir = if (mirror) -1f else 1f
+        fun addWave(startX: Float, alphaMul: Float) {
+            val p = Path()
+            val pts = listOf(
+                0.00f to 0f,
+                0.10f to 0f,
+                0.16f to -2f,
+                0.23f to 0f,
+                0.34f to 0f,
+                0.43f to -14f,
+                0.51f to 8f,
+                0.60f to 0f,
+                1.00f to 0f
+            )
+            p.moveTo(startX + (pts.first().first * cycle * dir), base + pts.first().second)
+            pts.drop(1).forEach { (x, y) ->
+                p.lineTo(startX + (x * cycle * dir), base + y)
+            }
+            drawPath(
+                path = p,
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        DeepTeal.copy(alpha = 0.05f),
+                        DeepTeal.copy(alpha = 0.95f * alphaMul),
+                        DeepTeal.copy(alpha = 0.05f)
+                    )
+                ),
                 style = Stroke(width = stroke, cap = StrokeCap.Round)
             )
-
-            val sweep = 360f * progress.coerceIn(0f, 1f)
-            drawArc(
-                brush = Brush.sweepGradient(
-                    colors = listOf(DeepIndigo, DeepTeal, DeepIndigo),
-                    center = Offset(size.width / 2f, size.height / 2f)
-                ),
-                startAngle = -90f,
-                sweepAngle = sweep,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = Stroke(width = stroke * 0.85f, cap = StrokeCap.Round)
-            )
-
-            val radius = size.minDimension / 2f - stroke * 0.35f
-            val dotCenter = Offset(size.width / 2f, size.height / 2f - radius)
-            drawCircle(
-                color = DeepTeal,
-                radius = 5.dp.toPx(),
-                center = dotCenter
-            )
         }
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            AnimatedContent(
-                targetState = timeText,
-                transitionSpec = {
-                    if (targetState > initialState) {
-                        slideInVertically { height -> height } + fadeIn() togetherWith
-                            slideOutVertically { height -> -height } + fadeOut()
-                    } else {
-                        slideInVertically { height -> -height } + fadeIn() togetherWith
-                            slideOutVertically { height -> height } + fadeOut()
-                    } using SizeTransform(clip = false)
-                },
-                label = "timeText"
-            ) { targetTime ->
-                Text(
-                    text = targetTime,
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontWeight = FontWeight.Light,
-                        fontSize = 52.sp
-                    )
-                )
-            }
-            Text(
-                text = if (uiState is TimerState.Idle) "Remaining" else when (uiState) {
-                    is TimerState.Running -> "Remaining"
-                    is TimerState.Paused -> "Paused"
-                    is TimerState.Completed -> "Done"
-                    else -> "Remaining"
-                },
-                style = MaterialTheme.typography.labelMedium.copy(
-                    letterSpacing = 2.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                modifier = Modifier.padding(top = 6.dp)
-            )
-        }
+        val start = if (mirror) size.width + shift * cycle else -shift * cycle
+        addWave(start, travelAlpha.coerceIn(0.35f, 1f))
+        addWave(start + (cycle * dir), 0.45f)
     }
 }
 
