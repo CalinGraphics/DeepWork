@@ -25,7 +25,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonPrimitive
 import javax.inject.Inject
 
-data class LaunchableApp(val packageName: String, val label: String)
+data class LaunchableApp(
+    val packageName: String,
+    val label: String,
+    val isSystem: Boolean
+)
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -51,6 +55,9 @@ class SettingsViewModel @Inject constructor(
     private val _launchableApps = MutableStateFlow<List<LaunchableApp>>(emptyList())
     val launchableApps: StateFlow<List<LaunchableApp>> = _launchableApps.asStateFlow()
 
+    private val _showSystemApps = MutableStateFlow(false)
+    val showSystemApps: StateFlow<Boolean> = _showSystemApps.asStateFlow()
+
     private val _accessibilityServiceEnabled = MutableStateFlow(false)
     val accessibilityServiceEnabled: StateFlow<Boolean> = _accessibilityServiceEnabled.asStateFlow()
 
@@ -63,6 +70,10 @@ class SettingsViewModel @Inject constructor(
             val list = withContext(Dispatchers.Default) { queryLaunchableApps() }
             _launchableApps.value = list
         }
+    }
+
+    fun setShowSystemApps(show: Boolean) {
+        _showSystemApps.value = show
     }
 
     private fun queryLaunchableApps(): List<LaunchableApp> {
@@ -80,10 +91,11 @@ class SettingsViewModel @Inject constructor(
             .mapNotNull { ai ->
                 val pkg = ai.packageName
                 if (pkg == ours) return@mapNotNull null
-                val label = runCatching { pm.getApplicationLabel(ai).toString() }
+                val label = runCatching { ai.loadLabel(pm).toString() }
                     .getOrDefault(pkg)
                     .ifBlank { pkg }
-                LaunchableApp(pkg, label)
+                val isSystem = (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+                LaunchableApp(pkg, label, isSystem)
             }
             .distinctBy { it.packageName }
             .sortedBy { it.label.lowercase() }
