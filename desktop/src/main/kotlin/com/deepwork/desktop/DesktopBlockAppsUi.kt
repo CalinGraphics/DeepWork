@@ -52,7 +52,6 @@ private val DeepTeal = Color(0xFF00C4D4)
 fun DesktopBlockAppsCard() {
     val isWin = remember { WindowsForegroundExe.isWindowsOs() }
     val enabled by DesktopBlockedAppsStore.enabled.collectAsState()
-    val killBlockedProcesses by DesktopBlockedAppsStore.killBlockedProcesses.collectAsState()
     val blocked by DesktopBlockedAppsStore.blocked.collectAsState()
     var showPicker by remember { mutableStateOf(false) }
 
@@ -87,7 +86,7 @@ fun DesktopBlockAppsCard() {
                 )
             } else {
                 Text(
-                    "Cât timp Kara este deschisă, dacă treci la un program bifat, programul va fi blocat.",
+                    "În timpul sesiunii Pomodoro active, dacă deschizi un program bifat, vei primi overlay de blocare focus.",
                     fontSize = 12.sp,
                     color = Color(0xFF9090A0)
                 )
@@ -119,28 +118,6 @@ fun DesktopBlockAppsCard() {
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Alege aplicații instalate")
-                }
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Forțează închiderea aplicațiilor blocate", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        Text(
-                            "taskkill /F când programul blocat ajunge foreground",
-                            fontSize = 12.sp,
-                            color = Color(0xFF9090A0)
-                        )
-                    }
-                    Switch(
-                        checked = killBlockedProcesses,
-                        onCheckedChange = { DesktopBlockedAppsStore.setKillBlockedProcesses(it) },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = DeepIndigo,
-                            checkedTrackColor = DeepIndigo.copy(alpha = 0.45f)
-                        )
-                    )
                 }
             }
         }

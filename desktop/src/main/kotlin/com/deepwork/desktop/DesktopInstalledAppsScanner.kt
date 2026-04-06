@@ -3,9 +3,7 @@ package com.deepwork.desktop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.Json
-import java.io.File
+import java.util.Locale
 
 @Serializable
 data class DesktopInstalledAppRow(
@@ -14,132 +12,89 @@ data class DesktopInstalledAppRow(
     val exe: String
 )
 
-/**
- * Citește aplicații instalate Windows și le mapează la executabile.
- * Sursa principală: Start Menu shortcuts; fallback/completează din registry.
- */
+/** Citește aplicații instalate direct din registry (robust, fără PowerShell parsing). */
 object DesktopInstalledAppsScanner {
-
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+    private val roots = listOf(
+        "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+        "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+        "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+    )
 
     suspend fun scan(): Result<List<DesktopInstalledAppRow>> = withContext(Dispatchers.IO) {
         if (!WindowsForegroundExe.isWindowsOs()) {
             return@withContext Result.success(emptyList())
         }
         runCatching {
-            val script = """
-                ${'$'}startDirs = @(
-                  "${'$'}env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs",
-                  "${'$'}env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs"
-                )
-                ${'$'}regKeys = @(
-                  'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',
-                  'HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*',
-                  'HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'
-                )
-
-                function Is-BadExe([string]${'$'}exe) {
-                  if (-not ${'$'}exe) { return ${'$'}true }
-                  ${'$'}x = ${'$'}exe.ToLowerInvariant()
-                  if (${'$'}x -match '^(setup|unins|uninstall|update|updater|installer)') { return ${'$'}true }
-                  if (${'$'}x -match '.*(setup|unins|uninstall|update|updater|installer)\\.exe${'$'}') { return ${'$'}true }
-                  return ${'$'}false
-                }
-
-                ${'$'}rows = New-Object System.Collections.Generic.List[object]
-                ${'$'}seen = New-Object 'System.Collections.Generic.HashSet[string]'
-
-                # 1) Start menu shortcuts (installed apps users actually launch)
-                try {
-                  ${'$'}shell = New-Object -ComObject WScript.Shell
-                  foreach (${'$'}dir in ${'$'}startDirs) {
-                    if (-not (Test-Path ${'$'}dir)) { continue }
-                    ${'$'}lnks = Get-ChildItem -Path ${'$'}dir -Recurse -Filter *.lnk -ErrorAction SilentlyContinue
-                    foreach (${'$'}l in ${'$'}lnks) {
-                      try {
-                        ${'$'}sc = ${'$'}shell.CreateShortcut(${'$'}l.FullName)
-                        ${'$'}target = ${'$'}sc.TargetPath
-                        if (-not ${'$'}target) { continue }
-                        if (-not ${'$'}target.ToLowerInvariant().EndsWith('.exe')) { continue }
-                        ${'$'}exe = [System.IO.Path]::GetFileName(${'$'}target).ToLowerInvariant()
-                        if (Is-BadExe ${'$'}exe) { continue }
-                        ${'$'}name = [System.IO.Path]::GetFileNameWithoutExtension(${'$'}l.Name)
-                        if (-not ${'$'}name) { continue }
-                        ${'$'}k = "${'$'}name|${'$'}exe"
-                        if (${'$'}seen.Add(${'$'}k)) {
-                          ${'$'}rows.Add([PSCustomObject]@{ name = ${'$'}name; exe = ${'$'}exe })
-                        }
-                      } catch { }
-                    }
-                  }
-                } catch { }
-
-                # 2) Registry fallback/completion (for apps without shortcuts)
-                foreach (${'$'}k in ${'$'}regKeys) {
-                  ${'$'}items = Get-ItemProperty ${'$'}k -ErrorAction SilentlyContinue | Where-Object { ${'$'}_.DisplayName -and ${'$'}_.DisplayIcon }
-                  foreach (${'$'}p in ${'$'}items) {
-                    try {
-                      ${'$'}icon = (${'$'}p.DisplayIcon -replace '^"+|"+${'$'}', '') -replace ',\d+${'$'}',''
-                      if (-not ${'$'}icon) { continue }
-                      ${'$'}icon = ${'$'}icon -replace '"',''
-                      if (-not ${'$'}icon.ToLowerInvariant().EndsWith('.exe')) { continue }
-                      ${'$'}exe = [System.IO.Path]::GetFileName(${'$'}icon).ToLowerInvariant()
-                      if (Is-BadExe ${'$'}exe) { continue }
-                      ${'$'}name = [string]${'$'}p.DisplayName
-                      if (-not ${'$'}name) { continue }
-                      ${'$'}k2 = "${'$'}name|${'$'}exe"
-                      if (${'$'}seen.Add(${'$'}k2)) {
-                        ${'$'}rows.Add([PSCustomObject]@{ name = ${'$'}name; exe = ${'$'}exe })
-                      }
-                    } catch { }
-                  }
-                }
-
-                ${'$'}out = @(${'$'}rows) | Sort-Object name -Unique
-                if (${'$'}out.Count -eq 0) { "[]" } else { ${'$'}out | ConvertTo-Json -Compress -Depth 4 }
-            """.trimIndent()
-
-            val f = File.createTempFile("kara-scan", ".ps1")
-            try {
-                f.writeText(script, Charsets.UTF_8)
-                val proc = ProcessBuilder(
-                    "powershell",
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-ExecutionPolicy", "Bypass",
-                    "-File",
-                    f.absolutePath
-                )
+            val rows = linkedMapOf<String, DesktopInstalledAppRow>()
+            for (root in roots) {
+                val proc = ProcessBuilder("reg", "query", root, "/s")
                     .redirectErrorStream(true)
                     .start()
-                val out = proc.inputStream.bufferedReader().readText()
+                val text = proc.inputStream.bufferedReader().readText()
                 proc.waitFor()
-                val trimmed = out.trim()
-                if (trimmed.isEmpty() || trimmed == "null") return@runCatching emptyList()
-                val payload = extractJsonPayload(trimmed) ?: return@runCatching emptyList()
-                when {
-                    payload.startsWith("[") ->
-                        json.decodeFromString(ListSerializer(DesktopInstalledAppRow.serializer()), payload)
-                    payload.startsWith("{") -> {
-                        val one = json.decodeFromString(DesktopInstalledAppRow.serializer(), payload)
-                        listOf(one)
-                    }
-                    else -> emptyList()
+                parseRegistryDump(text).forEach { row ->
+                    rows.putIfAbsent("${row.name}|${row.exe}", row)
                 }
-            } finally {
-                runCatching { f.delete() }
             }
+            rows.values.sortedBy { it.name.lowercase(Locale.ROOT) }
         }
     }
 
-    /**
-     * Uneori PowerShell emite warnings/text înainte de JSON.
-     * Extrage primul payload JSON detectat din output.
-     */
-    private fun extractJsonPayload(raw: String): String? {
-        val startArr = raw.indexOf('[').takeIf { it >= 0 }
-        val startObj = raw.indexOf('{').takeIf { it >= 0 }
-        val start = listOfNotNull(startArr, startObj).minOrNull() ?: return null
-        return raw.substring(start).trim()
+    private fun parseRegistryDump(dump: String): List<DesktopInstalledAppRow> {
+        val out = mutableListOf<DesktopInstalledAppRow>()
+        var displayName: String? = null
+        var displayIcon: String? = null
+
+        fun flushCurrent() {
+            val name = displayName?.trim().orEmpty()
+            val icon = displayIcon?.trim().orEmpty()
+            if (name.isEmpty() || icon.isEmpty()) return
+            val exe = normalizeExeFromDisplayIcon(icon) ?: return
+            if (isNoiseExe(exe)) return
+            out += DesktopInstalledAppRow(name = name, exe = exe)
+        }
+
+        dump.lineSequence().forEach { raw ->
+            val line = raw.trimEnd()
+            if (line.isBlank()) {
+                flushCurrent()
+                displayName = null
+                displayIcon = null
+                return@forEach
+            }
+            if (!line.startsWith("HKEY_", ignoreCase = true)) {
+                val t = line.trimStart()
+                when {
+                    t.startsWith("DisplayName", ignoreCase = true) -> {
+                        displayName = t.substringAfter("REG_SZ", "").trim().ifBlank { null }
+                    }
+                    t.startsWith("DisplayIcon", ignoreCase = true) -> {
+                        displayIcon = t.substringAfter("REG_SZ", "").trim().ifBlank { null }
+                    }
+                }
+            }
+        }
+        flushCurrent()
+        return out
+    }
+
+    private fun normalizeExeFromDisplayIcon(raw: String): String? {
+        var s = raw.trim().replace("\"", "")
+        val comma = s.lastIndexOf(',')
+        if (comma > 1) {
+            val suffix = s.substring(comma + 1).trim()
+            if (suffix.toIntOrNull() != null) s = s.substring(0, comma)
+        }
+        val slash = maxOf(s.lastIndexOf('\\'), s.lastIndexOf('/'))
+        val name = if (slash >= 0) s.substring(slash + 1) else s
+        val exe = name.lowercase(Locale.ROOT)
+        return exe.takeIf { it.endsWith(".exe") }
+    }
+
+    private fun isNoiseExe(exe: String): Boolean {
+        val x = exe.lowercase(Locale.ROOT)
+        if (x.startsWith("setup") || x.startsWith("unins") || x.startsWith("uninstall")) return true
+        if (x.startsWith("update") || x.startsWith("updater") || x.startsWith("installer")) return true
+        return x.contains("uninstall") || x.contains("updater")
     }
 }

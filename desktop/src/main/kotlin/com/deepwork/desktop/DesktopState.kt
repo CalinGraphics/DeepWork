@@ -20,6 +20,9 @@ object DesktopState {
     private val _usbBridgeStatus = MutableStateFlow("USB bridge: pending")
     val usbBridgeStatus: StateFlow<String> = _usbBridgeStatus.asStateFlow()
 
+    private val _blockingOverlayAppName = MutableStateFlow<String?>(null)
+    val blockingOverlayAppName: StateFlow<String?> = _blockingOverlayAppName.asStateFlow()
+
     fun setPairingUrl(url: String) {
         _pairingUrl.value = url
     }
@@ -34,6 +37,14 @@ object DesktopState {
 
     fun setConnected(value: Boolean) {
         _connected.value = value
+    }
+
+    fun showBlockingOverlay(appName: String) {
+        _blockingOverlayAppName.value = appName
+    }
+
+    fun clearBlockingOverlay() {
+        _blockingOverlayAppName.value = null
     }
 
     fun onMessage(msg: DeepWorkMessage) {

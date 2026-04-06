@@ -112,6 +112,7 @@ fun DesktopCompanionApp(
     val pairingUrl by DesktopState.pairingUrl.collectAsState()
     val usbBridgeStatus by DesktopState.usbBridgeStatus.collectAsState()
     val lastGesture by DesktopState.lastGesture.collectAsState()
+    val blockingOverlayAppName by DesktopState.blockingOverlayAppName.collectAsState()
     var mainTab by remember { mutableStateOf(DesktopMainTab.Dashboard) }
     var infoDialog by remember { mutableStateOf<DesktopInfoKind?>(null) }
     var showBlockAppsDialog by remember { mutableStateOf(false) }
@@ -225,6 +226,12 @@ fun DesktopCompanionApp(
                     onStrictFocusChange = onStrictFocusChange,
                     onTabSelected = { mainTab = it }
                 )
+            if (blockingOverlayAppName != null) {
+                FocusBlockOverlay(
+                    appName = blockingOverlayAppName.orEmpty(),
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
         }
     }
 
@@ -264,6 +271,42 @@ fun DesktopCompanionApp(
 }
 
 private enum class DesktopInfoKind { Notifications }
+
+@Composable
+private fun FocusBlockOverlay(appName: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.58f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = SurfaceC),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, SurfaceVar),
+            modifier = Modifier
+                .widthIn(min = 420.dp, max = 640.dp)
+                .padding(24.dp)
+        ) {
+            Column(
+                Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("Aplicație blocată în Focus", fontWeight = FontWeight.Bold, fontSize = 22.sp, color = DeepTeal)
+                Text(
+                    "Program blocat detectat: $appName",
+                    fontSize = 14.sp,
+                    color = Color(0xFFD0D0E0)
+                )
+                Text(
+                    "Revino la sesiunea Pomodoro. Aplicațiile blocate devin accesibile după ce sesiunea se încheie sau este pusă pe pauză.",
+                    fontSize = 13.sp,
+                    color = Color(0xFFA0A0B0)
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun DesktopTopBar(

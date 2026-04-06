@@ -9,36 +9,39 @@ import kotlinx.coroutines.isActive
  * cere reafișarea ferestrei Kara (Windows + JNA).
  */
 object DesktopForegroundBlockLoop {
-    private var lastKillAtMs = 0L
-    private var lastKilledExe: String? = null
+    private var lastOverlayAtMs = 0L
+    private var lastOverlayExe: String? = null
 
     suspend fun run(onBringKaraToFront: () -> Unit) {
         if (!WindowsForegroundExe.isWindowsOs()) return
         while (currentCoroutineContext().isActive) {
-            delay(800)
-            if (!DesktopBlockedAppsStore.isBlockingConfigured()) continue
+            delay(500)
+            if (!DesktopBlockedAppsStore.isBlockingConfigured()) {
+                DesktopState.clearBlockingOverlay()
+                continue
+            }
+            // Blocăm doar în focus activ (Pomodoro running), nu în pauză.
+            if (DesktopLocalSession.phase.value != DesktopSessionPhase.Running) {
+                DesktopState.clearBlockingOverlay()
+                continue
+            }
             val fg = WindowsForegroundExe.foregroundExeLowercase() ?: continue
             val ours = WindowsForegroundExe.ourProcessExeLowercase()
             if (ours != null && fg == ours) continue
             if (DesktopBlockedAppsStore.isBlocked(fg)) {
-                killExeIfAllowed(fg)
+                maybeShowOverlay(fg)
                 onBringKaraToFront()
+            } else {
+                DesktopState.clearBlockingOverlay()
             }
         }
     }
 
-    private fun killExeIfAllowed(exeLowercase: String) {
-        if (!DesktopBlockedAppsStore.killBlockedProcesses.value) return
+    private fun maybeShowOverlay(exeLowercase: String) {
         val now = System.currentTimeMillis()
-        if (exeLowercase == lastKilledExe && now - lastKillAtMs < 1_500L) return
-        lastKilledExe = exeLowercase
-        lastKillAtMs = now
-        runCatching {
-            ProcessBuilder(
-                "cmd",
-                "/c",
-                "taskkill /F /IM $exeLowercase /T"
-            ).redirectErrorStream(true).start().waitFor()
-        }
+        if (exeLowercase == lastOverlayExe && now - lastOverlayAtMs < 700L) return
+        lastOverlayExe = exeLowercase
+        lastOverlayAtMs = now
+        DesktopState.showBlockingOverlay(exeLowercase)
     }
 }
