@@ -116,11 +116,12 @@ object DesktopInstalledAppsScanner {
                 proc.waitFor()
                 val trimmed = out.trim()
                 if (trimmed.isEmpty() || trimmed == "null") return@runCatching emptyList()
+                val payload = extractJsonPayload(trimmed) ?: return@runCatching emptyList()
                 when {
-                    trimmed.startsWith("[") ->
-                        json.decodeFromString(ListSerializer(DesktopInstalledAppRow.serializer()), trimmed)
-                    trimmed.startsWith("{") -> {
-                        val one = json.decodeFromString(DesktopInstalledAppRow.serializer(), trimmed)
+                    payload.startsWith("[") ->
+                        json.decodeFromString(ListSerializer(DesktopInstalledAppRow.serializer()), payload)
+                    payload.startsWith("{") -> {
+                        val one = json.decodeFromString(DesktopInstalledAppRow.serializer(), payload)
                         listOf(one)
                     }
                     else -> emptyList()
@@ -129,5 +130,16 @@ object DesktopInstalledAppsScanner {
                 runCatching { f.delete() }
             }
         }
+    }
+
+    /**
+     * Uneori PowerShell emite warnings/text înainte de JSON.
+     * Extrage primul payload JSON detectat din output.
+     */
+    private fun extractJsonPayload(raw: String): String? {
+        val startArr = raw.indexOf('[').takeIf { it >= 0 }
+        val startObj = raw.indexOf('{').takeIf { it >= 0 }
+        val start = listOfNotNull(startArr, startObj).minOrNull() ?: return null
+        return raw.substring(start).trim()
     }
 }
