@@ -5,7 +5,6 @@ import android.content.Intent
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
 import com.deepwork.MainActivity
-import com.deepwork.core.common.FocusSessionGate
 import com.deepwork.data.local.preferences.UserPreferencesRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
@@ -27,14 +26,17 @@ class FocusBlockAccessibilityService : AccessibilityService() {
             ev.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
             ev.eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED
         ) return
-        if (!FocusSessionGate.isFocusSessionActive()) return
 
-        val pkg = ev.packageName?.toString() ?: return
+        val pkg = ev.packageName?.toString()
+            ?: ev.source?.packageName?.toString()
+            ?: return
         if (pkg == packageName) return
 
-        val blocked = runBlocking(Dispatchers.IO) {
-            userPreferencesRepository.getBlockedAppPackagesOnce()
+        val (blockingActive, blocked) = runBlocking(Dispatchers.IO) {
+            userPreferencesRepository.isFocusBlockingActiveOnce() to
+                userPreferencesRepository.getBlockedAppPackagesOnce()
         }
+        if (!blockingActive) return
         if (blocked.isEmpty() || pkg !in blocked) return
 
         val now = SystemClock.elapsedRealtime()

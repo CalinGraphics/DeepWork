@@ -33,6 +33,7 @@ class UserPreferencesRepository @Inject constructor(
         val TOTAL_XP = intPreferencesKey("total_xp")
         val ACTIVE_TASK_ID = stringPreferencesKey("active_task_id")
         val BLOCKED_APP_PACKAGES = stringSetPreferencesKey("blocked_app_packages")
+        val FOCUS_BLOCKING_ACTIVE = booleanPreferencesKey("focus_blocking_active")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = dataStore.data.map { preferences ->
@@ -67,6 +68,15 @@ class UserPreferencesRepository @Inject constructor(
             } else {
                 prefs[PreferencesKeys.BLOCKED_APP_PACKAGES] = packages
             }
+        }
+    }
+
+    suspend fun isFocusBlockingActiveOnce(): Boolean =
+        dataStore.data.first()[PreferencesKeys.FOCUS_BLOCKING_ACTIVE] ?: false
+
+    suspend fun setFocusBlockingActive(active: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[PreferencesKeys.FOCUS_BLOCKING_ACTIVE] = active
         }
     }
 

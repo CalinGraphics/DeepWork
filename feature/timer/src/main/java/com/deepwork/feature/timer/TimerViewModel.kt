@@ -77,6 +77,10 @@ class TimerViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            userPreferencesRepository.setFocusBlockingActive(false)
+            FocusSessionGate.setFocusSessionActive(false)
+        }
+        viewModelScope.launch {
             userPreferencesRepository.userPreferencesFlow.collect { prefs ->
                 _sessionDurationMinutes.value = prefs.sessionDuration.coerceIn(5, 120)
             }
@@ -109,6 +113,7 @@ class TimerViewModel @Inject constructor(
             is TimerState.Error -> abandonDraftSession()
         }
         _uiState.value = TimerState.Idle
+        setBlockingActive(false)
         notifyDesktop(MessageType.TIMER_STOP)
     }
 
@@ -121,6 +126,7 @@ class TimerViewModel @Inject constructor(
                 currentSessionId = session.id
                 val durationMillis = sessionTotalMillis
                 _uiState.update { TimerState.Running(durationMillis, 1f) }
+                setBlockingActive(true)
                 startCountdown(durationMillis)
                 notifyDesktop(MessageType.TIMER_START)
                 timerNotifier.showSessionStarted(durationMinutes)
@@ -133,6 +139,7 @@ class TimerViewModel @Inject constructor(
         if (currentState is TimerState.Running) {
             timerJob?.cancel()
             _uiState.update { TimerState.Paused(currentState.remainingMillis, currentState.progress) }
+            setBlockingActive(false)
             notifyDesktop(MessageType.TIMER_PAUSE)
             timerNotifier.showSessionPaused()
         }
@@ -142,6 +149,7 @@ class TimerViewModel @Inject constructor(
         val currentState = _uiState.value
         if (currentState is TimerState.Paused) {
             _uiState.update { TimerState.Running(currentState.remainingMillis, currentState.progress) }
+            setBlockingActive(true)
             startCountdown(currentState.remainingMillis)
             notifyDesktop(MessageType.TIMER_START)
         }
@@ -156,6 +164,7 @@ class TimerViewModel @Inject constructor(
             else -> {}
         }
         _uiState.update { TimerState.Idle }
+        setBlockingActive(false)
         notifyDesktop(MessageType.TIMER_STOP)
     }
 
@@ -176,8 +185,16 @@ class TimerViewModel @Inject constructor(
             }
             completeCurrentSession(completedFull = true)
             _uiState.update { TimerState.Completed(plannedSessionMinutes, null) }
+            setBlockingActive(false)
             timerNotifier.showSessionCompleted(plannedSessionMinutes)
             notifyDesktopSessionCompleted(plannedSessionMinutes)
+        }
+    }
+
+    private fun setBlockingActive(active: Boolean) {
+        FocusSessionGate.setFocusSessionActive(active)
+        viewModelScope.launch {
+            userPreferencesRepository.setFocusBlockingActive(active)
         }
     }
 

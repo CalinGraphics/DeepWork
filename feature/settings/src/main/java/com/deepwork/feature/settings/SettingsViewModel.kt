@@ -2,6 +2,7 @@ package com.deepwork.feature.settings
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
 import androidx.lifecycle.ViewModel
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonPrimitive
+import java.util.Locale
 import javax.inject.Inject
 
 data class LaunchableApp(
@@ -79,7 +81,7 @@ class SettingsViewModel @Inject constructor(
             pm.getInstalledApplications(0)
         }
         val ours = appContext.packageName
-        return installed.asSequence()
+        val userInstalled = installed.asSequence()
             .mapNotNull { ai ->
                 val pkg = ai.packageName
                 if (pkg == ours) return@mapNotNull null
@@ -92,8 +94,45 @@ class SettingsViewModel @Inject constructor(
                 if (isSystem || isUpdatedSystem) return@mapNotNull null
                 LaunchableApp(pkg, label)
             }
+            .toMutableList()
+
+        // Fallback robust: include si aplicatiile lansabile din launcher (utile cand OEM ascunde pachete la installed apps).
+        @Suppress("DEPRECATION")
+        val launchables = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            pm.queryIntentActivities(
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER),
+                PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong())
+            )
+        } else {
+            pm.queryIntentActivities(
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER),
+                PackageManager.MATCH_DEFAULT_ONLY
+            )
+        }.asSequence()
+            .mapNotNull { ri ->
+                val pkg = ri.activityInfo?.packageName ?: return@mapNotNull null
+                if (pkg == ours) return@mapNotNull null
+                val label = runCatching { ri.loadLabel(pm).toString() }.getOrDefault(pkg).ifBlank { pkg }
+                LaunchableApp(pkg, label)
+            }
+            .toList()
+
+        val merged = (userInstalled + launchables)
             .distinctBy { it.packageName }
-            .sortedBy { it.label.lowercase() }
+            .sortedWith(compareBy<LaunchableApp> { it.label.lowercase(Locale.ROOT) }.thenBy { it.packageName })
+
+        // Dacă tot e gol, întoarce măcar tot ce vede PackageManager (fără filtrare) ca fallback de ultim nivel.
+        if (merged.isNotEmpty()) return merged
+
+        return installed.asSequence()
+            .mapNotNull { ai ->
+                val pkg = ai.packageName
+                if (pkg == ours) return@mapNotNull null
+                val label = runCatching { ai.loadLabel(pm).toString() }.getOrDefault(pkg).ifBlank { pkg }
+                LaunchableApp(pkg, label)
+            }
+            .distinctBy { it.packageName }
+            .sortedWith(compareBy<LaunchableApp> { it.label.lowercase(Locale.ROOT) }.thenBy { it.packageName })
             .toList()
     }
 
