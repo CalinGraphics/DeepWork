@@ -8,6 +8,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -87,6 +92,26 @@ fun DesktopTimerArc(
 
     val trackColor = Color.White.copy(alpha = 0.06f)
     val sizeDp = 264.dp
+    val runningPulse = phase == DesktopSessionPhase.Running
+    val transition = rememberInfiniteTransition(label = "timerPulse")
+    val pulseA = transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseA"
+    ).value
+    val pulseB = transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseB"
+    ).value
 
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(sizeDp)) {
         Canvas(modifier = Modifier.size(sizeDp)) {
@@ -141,12 +166,27 @@ fun DesktopTimerArc(
                 },
                 label = "desktopTime"
             ) { targetTime ->
-                Text(
-                    text = targetTime,
-                    fontSize = 52.sp,
-                    fontWeight = FontWeight.Light,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    if (runningPulse) {
+                        PulseDot(alpha = pulseA)
+                    } else {
+                        Spacer(Modifier.size(10.dp))
+                    }
+                    Text(
+                        text = targetTime,
+                        fontSize = 52.sp,
+                        fontWeight = FontWeight.Light,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    if (runningPulse) {
+                        PulseDot(alpha = pulseB)
+                    } else {
+                        Spacer(Modifier.size(10.dp))
+                    }
+                }
             }
             Text(
                 text = when (phase) {
@@ -161,6 +201,18 @@ fun DesktopTimerArc(
             )
         }
     }
+}
+
+@Composable
+private fun PulseDot(alpha: Float) {
+    Box(
+        modifier = Modifier
+            .size(10.dp)
+            .background(
+                DeepTeal.copy(alpha = alpha.coerceIn(0.2f, 1f)),
+                RoundedCornerShape(50)
+            )
+    )
 }
 
 @Composable

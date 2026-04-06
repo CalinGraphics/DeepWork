@@ -22,6 +22,7 @@ object DesktopState {
 
     private val _blockingOverlayAppName = MutableStateFlow<String?>(null)
     val blockingOverlayAppName: StateFlow<String?> = _blockingOverlayAppName.asStateFlow()
+    private var suppressedOverlayAppName: String? = null
 
     fun setPairingUrl(url: String) {
         _pairingUrl.value = url
@@ -40,10 +41,20 @@ object DesktopState {
     }
 
     fun showBlockingOverlay(appName: String) {
+        if (suppressedOverlayAppName == appName) return
         _blockingOverlayAppName.value = appName
     }
 
     fun clearBlockingOverlay() {
+        _blockingOverlayAppName.value = null
+        suppressedOverlayAppName = null
+    }
+
+    fun dismissBlockingOverlay() {
+        val cur = _blockingOverlayAppName.value
+        if (!cur.isNullOrBlank()) {
+            suppressedOverlayAppName = cur
+        }
         _blockingOverlayAppName.value = null
     }
 

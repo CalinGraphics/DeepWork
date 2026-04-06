@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Sensors
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
@@ -229,6 +230,7 @@ fun DesktopCompanionApp(
             if (blockingOverlayAppName != null) {
                 FocusBlockOverlay(
                     appName = blockingOverlayAppName.orEmpty(),
+                    onClose = { DesktopState.dismissBlockingOverlay() },
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
@@ -273,7 +275,11 @@ fun DesktopCompanionApp(
 private enum class DesktopInfoKind { Notifications }
 
 @Composable
-private fun FocusBlockOverlay(appName: String, modifier: Modifier = Modifier) {
+private fun FocusBlockOverlay(
+    appName: String,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -292,7 +298,16 @@ private fun FocusBlockOverlay(appName: String, modifier: Modifier = Modifier) {
                 Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Aplicație blocată în Focus", fontWeight = FontWeight.Bold, fontSize = 22.sp, color = DeepTeal)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Aplicație blocată în Focus", fontWeight = FontWeight.Bold, fontSize = 22.sp, color = DeepTeal)
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Outlined.Close, contentDescription = "Închide overlay", tint = Color(0xFFE8E8F0))
+                    }
+                }
                 Text(
                     "Program blocat detectat: $appName",
                     fontSize = 14.sp,

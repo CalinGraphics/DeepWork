@@ -161,7 +161,7 @@ fun DesktopBlockAppsPickerDialog(onDismiss: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    "Bifează aplicațiile (exe) pe care nu vrei să le poți folosi cât timp Kara este deschisă.",
+                    "Bifează aplicațiile pe care nu vrei să le poți folosi cât timp Kara este deschisă.",
                     fontSize = 12.sp,
                     color = Color(0xFFB0B0C0)
                 )
