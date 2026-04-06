@@ -2,9 +2,7 @@ package com.deepwork.feature.settings
 
 import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -69,22 +67,23 @@ class SettingsViewModel @Inject constructor(
 
     private fun queryLaunchableApps(): List<LaunchableApp> {
         val pm = appContext.packageManager
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         @Suppress("DEPRECATION")
-        val resolves = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            pm.queryIntentActivities(
-                intent,
-                PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong())
+        val installed = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            pm.getInstalledApplications(
+                PackageManager.ApplicationInfoFlags.of(0L)
             )
         } else {
-            pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            pm.getInstalledApplications(0)
         }
         val ours = appContext.packageName
-        return resolves.asSequence()
-            .mapNotNull { ri ->
-                val pkg = ri.activityInfo.packageName
+        return installed.asSequence()
+            .mapNotNull { ai ->
+                val pkg = ai.packageName
                 if (pkg == ours) return@mapNotNull null
-                LaunchableApp(pkg, ri.loadLabel(pm).toString())
+                val label = runCatching { pm.getApplicationLabel(ai).toString() }
+                    .getOrDefault(pkg)
+                    .ifBlank { pkg }
+                LaunchableApp(pkg, label)
             }
             .distinctBy { it.packageName }
             .sortedBy { it.label.lowercase() }

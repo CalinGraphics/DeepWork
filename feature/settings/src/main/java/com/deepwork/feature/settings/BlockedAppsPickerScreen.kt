@@ -152,7 +152,7 @@ fun BlockedAppsPickerScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "${blocked.size} aplicații blocate · ${apps.size} instalate (lansabile)",
+                        "${blocked.size} aplicații blocate · ${apps.size} instalate",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -185,11 +185,6 @@ fun BlockedAppsPickerScreen(
                         )
                         Column(Modifier.weight(1f)) {
                             Text(app.label, style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                app.packageName,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
                     }
                 }

@@ -203,7 +203,7 @@ fun SettingsScreen(
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    "${blocked.size} selectate · vezi tot ce e instalat (lansabil)",
+                                    "${blocked.size} selectate",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color.White.copy(alpha = 0.85f)
                                 )
