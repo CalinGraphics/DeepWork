@@ -27,8 +27,7 @@ import javax.inject.Inject
 
 data class LaunchableApp(
     val packageName: String,
-    val label: String,
-    val isSystem: Boolean
+    val label: String
 )
 
 @HiltViewModel
@@ -55,9 +54,6 @@ class SettingsViewModel @Inject constructor(
     private val _launchableApps = MutableStateFlow<List<LaunchableApp>>(emptyList())
     val launchableApps: StateFlow<List<LaunchableApp>> = _launchableApps.asStateFlow()
 
-    private val _showSystemApps = MutableStateFlow(false)
-    val showSystemApps: StateFlow<Boolean> = _showSystemApps.asStateFlow()
-
     private val _accessibilityServiceEnabled = MutableStateFlow(false)
     val accessibilityServiceEnabled: StateFlow<Boolean> = _accessibilityServiceEnabled.asStateFlow()
 
@@ -70,10 +66,6 @@ class SettingsViewModel @Inject constructor(
             val list = withContext(Dispatchers.Default) { queryLaunchableApps() }
             _launchableApps.value = list
         }
-    }
-
-    fun setShowSystemApps(show: Boolean) {
-        _showSystemApps.value = show
     }
 
     private fun queryLaunchableApps(): List<LaunchableApp> {
@@ -95,7 +87,10 @@ class SettingsViewModel @Inject constructor(
                     .getOrDefault(pkg)
                     .ifBlank { pkg }
                 val isSystem = (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
-                LaunchableApp(pkg, label, isSystem)
+                val isUpdatedSystem =
+                    (ai.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+                if (isSystem || isUpdatedSystem) return@mapNotNull null
+                LaunchableApp(pkg, label)
             }
             .distinctBy { it.packageName }
             .sortedBy { it.label.lowercase() }

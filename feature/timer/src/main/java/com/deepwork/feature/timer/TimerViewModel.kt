@@ -86,7 +86,7 @@ class TimerViewModel @Inject constructor(
         }
         viewModelScope.launch {
             uiState.collect { state ->
-                val active = state is TimerState.Running || state is TimerState.Paused
+                val active = state is TimerState.Running
                 FocusSessionGate.setFocusSessionActive(active)
             }
         }

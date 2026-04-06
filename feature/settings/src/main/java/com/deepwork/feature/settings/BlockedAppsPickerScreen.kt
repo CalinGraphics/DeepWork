@@ -25,8 +25,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -46,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.deepwork.core.ui.theme.DeepIndigo
 import com.deepwork.core.ui.theme.DeepTeal
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,7 +56,6 @@ fun BlockedAppsPickerScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val blocked by viewModel.blockedPackages.collectAsState()
     val apps by viewModel.launchableApps.collectAsState()
-    val showSystem by viewModel.showSystemApps.collectAsState()
     val accessibilityOn by viewModel.accessibilityServiceEnabled.collectAsState()
 
     LaunchedEffect(Unit) {
@@ -102,7 +98,6 @@ fun BlockedAppsPickerScreen(
             )
         }
     ) { innerPadding ->
-        val visibleApps = if (showSystem) apps else apps.filter { !it.isSystem }
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -156,7 +151,7 @@ fun BlockedAppsPickerScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "${blocked.size} blocate · ${visibleApps.size} afișate",
+                        "${blocked.size} blocate · ${apps.size} instalate",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -166,43 +161,7 @@ fun BlockedAppsPickerScreen(
                 }
             }
 
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Arată aplicații de sistem", fontWeight = FontWeight.SemiBold)
-                        Text(
-                            "De obicei nu ai nevoie de ele (overlay-uri, module).",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = showSystem,
-                        onCheckedChange = { viewModel.setShowSystemApps(it) },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = DeepIndigo,
-                            checkedTrackColor = DeepIndigo.copy(alpha = 0.45f)
-                        )
-                    )
-                }
-            }
-
-            item {
-                if (!showSystem && visibleApps.size < 30) {
-                    Text(
-                        "Notă: dacă aici vezi foarte puține aplicații, e posibil să rulezi Kara într-un profil diferit (Work Profile / Secure Folder). " +
-                            "Android nu îți permite să gestionezi aplicații din alt profil. Instalează și rulează Kara în același profil în care ai Instagram/Facebook/YouTube.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF9090A0)
-                    )
-                }
-            }
-
-            items(visibleApps, key = { it.packageName }) { app ->
+            items(apps, key = { it.packageName }) { app ->
                 val checked = app.packageName in blocked
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -221,7 +180,7 @@ fun BlockedAppsPickerScreen(
                         Checkbox(
                             checked = checked,
                             onCheckedChange = { viewModel.setPackageBlocked(app.packageName, it) },
-                            colors = CheckboxDefaults.colors(checkedColor = DeepIndigo)
+                            colors = CheckboxDefaults.colors(checkedColor = Color(0xFF5C55E8))
                         )
                         Column(Modifier.weight(1f)) {
                             Text(app.label, style = MaterialTheme.typography.bodyMedium)
