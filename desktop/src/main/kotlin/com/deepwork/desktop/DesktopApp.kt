@@ -114,6 +114,7 @@ fun DesktopCompanionApp(
     val lastGesture by DesktopState.lastGesture.collectAsState()
     var mainTab by remember { mutableStateOf(DesktopMainTab.Dashboard) }
     var infoDialog by remember { mutableStateOf<DesktopInfoKind?>(null) }
+    var showBlockAppsDialog by remember { mutableStateOf(false) }
     val dashboardListState = rememberLazyListState()
     val insightsListState = rememberLazyListState()
 
@@ -141,7 +142,7 @@ fun DesktopCompanionApp(
             val stackDashboard = true
             Column(Modifier.fillMaxSize()) {
                 DesktopTopBar(
-                    onSettingsClick = { infoDialog = DesktopInfoKind.Settings },
+                    onSettingsClick = { showBlockAppsDialog = true },
                     onNotificationsClick = { infoDialog = DesktopInfoKind.Notifications }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -168,7 +169,6 @@ fun DesktopCompanionApp(
                                             SessionTimerCard(status, connected)
                                             ProductivityHeatmapCard()
                                             GestureMapCard(connected, lastGesture)
-                                            DesktopBlockAppsCard()
                                             ConnectionCard(pairingUrl, usbBridgeStatus)
                                         }
                                     } else {
@@ -188,7 +188,6 @@ fun DesktopCompanionApp(
                                                 verticalArrangement = Arrangement.spacedBy(24.dp)
                                             ) {
                                                 GestureMapCard(connected, lastGesture)
-                                                DesktopBlockAppsCard()
                                                 ConnectionCard(pairingUrl, usbBridgeStatus)
                                             }
                                         }
@@ -229,6 +228,10 @@ fun DesktopCompanionApp(
         }
     }
 
+    if (showBlockAppsDialog) {
+        DesktopBlockAppsPickerDialog(onDismiss = { showBlockAppsDialog = false })
+    }
+
     when (val kind = infoDialog) {
         null -> Unit
         else -> {
@@ -237,7 +240,6 @@ fun DesktopCompanionApp(
                 title = {
                     Text(
                         when (kind) {
-                            DesktopInfoKind.Settings -> "Setări companion"
                             DesktopInfoKind.Notifications -> "Notificări"
                         }
                     )
@@ -245,11 +247,6 @@ fun DesktopCompanionApp(
                 text = {
                     Text(
                         when (kind) {
-                            DesktopInfoKind.Settings ->
-                                "Serverul WebSocket rulează pe portul 8080. Pornește aplicația înainte de împerechere; pe telefon folosește același rețea sau USB (adb reverse).\n\n" +
-                                    "Strict Focus (implicit activ): ecran complet, mereu deasupra, fereastră neredimensionabilă — îți ține Kara în prim-plan. " +
-                                    "O aplicație Java nu poate bloca Alt+Tab sau notificările Windows ca un „lock” la nivel de sistem; pentru zero notificări folosește „Asistență pentru focus” / Do Not Disturb din Windows.\n\n" +
-                                    "Blocare aplicații (dashboard): pe Windows poți bifa .exe-uri din programele instalate; în timpul sesiunii, dacă treci într-un program blocat, Kara revine în prim-plan (nu închide alte aplicații)."
                             DesktopInfoKind.Notifications ->
                                 "Când telefonul este conectat, gesturile și actualizările de sesiune apar în bara de stare și în jurnalul de conexiune."
                         },
@@ -266,7 +263,7 @@ fun DesktopCompanionApp(
     }
 }
 
-private enum class DesktopInfoKind { Settings, Notifications }
+private enum class DesktopInfoKind { Notifications }
 
 @Composable
 private fun DesktopTopBar(

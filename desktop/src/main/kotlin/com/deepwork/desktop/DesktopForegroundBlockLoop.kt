@@ -17,7 +17,6 @@ object DesktopForegroundBlockLoop {
         while (currentCoroutineContext().isActive) {
             delay(800)
             if (!DesktopBlockedAppsStore.isBlockingConfigured()) continue
-            if (!DesktopLocalSession.isFocusSessionActive()) continue
             val fg = WindowsForegroundExe.foregroundExeLowercase() ?: continue
             val ours = WindowsForegroundExe.ourProcessExeLowercase()
             if (ours != null && fg == ours) continue

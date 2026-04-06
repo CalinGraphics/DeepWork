@@ -88,7 +88,7 @@ fun DesktopBlockAppsCard() {
                 )
             } else {
                 Text(
-                    "În timpul unei sesiuni (timer pornit sau pauză), dacă treci la un program bifat, Kara revine în prim-plan.",
+                    "Cât timp Kara este deschisă, dacă treci la un program bifat, programul va fi blocat.",
                     fontSize = 12.sp,
                     color = Color(0xFF9090A0)
                 )
@@ -129,7 +129,7 @@ fun DesktopBlockAppsCard() {
                     Column(Modifier.weight(1f)) {
                         Text("Forțează închiderea aplicațiilor blocate", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                         Text(
-                            "taskkill /F când aplicația blocată ajunge foreground",
+                            "taskkill /F când programul blocat ajunge foreground",
                             fontSize = 12.sp,
                             color = Color(0xFF9090A0)
                         )
@@ -153,7 +153,7 @@ fun DesktopBlockAppsCard() {
 }
 
 @Composable
-private fun DesktopBlockAppsPickerDialog(onDismiss: () -> Unit) {
+fun DesktopBlockAppsPickerDialog(onDismiss: () -> Unit) {
     val blocked by DesktopBlockedAppsStore.blocked.collectAsState()
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
