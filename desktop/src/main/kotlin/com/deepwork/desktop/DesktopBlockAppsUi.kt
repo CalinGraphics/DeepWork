@@ -23,8 +23,8 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -42,7 +42,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 
 private val SurfaceC = Color(0xFF1E1C31)
 private val SurfaceVar = Color(0xFF272546)
@@ -172,35 +171,29 @@ fun DesktopBlockAppsPickerDialog(onDismiss: () -> Unit) {
         }
     }
 
-    Dialog(onCloseRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = SurfaceC,
-            tonalElevation = 6.dp
-        ) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Aplicații instalate", fontWeight = FontWeight.Bold)
+        },
+        text = {
             Column(
                 Modifier
-                    .widthIn(min = 420.dp, max = 560.dp)
-                    .padding(20.dp)
+                    .widthIn(min = 520.dp, max = 720.dp)
+                    .padding(top = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    "Programe instalate (din registry)",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp,
-                    color = Color(0xFFF6F6F8)
-                )
-                Text(
-                    "Bifează .exe-urile pe care nu vrei să le lași în prim-plan cât timp rulează sesiunea Kara.",
+                    "Bifează aplicațiile (exe) pe care nu vrei să le poți folosi cât timp Kara este deschisă.",
                     fontSize = 12.sp,
-                    color = Color(0xFF9090A0),
-                    modifier = Modifier.padding(top = 6.dp, bottom = 12.dp)
+                    color = Color(0xFFB0B0C0)
                 )
                 when {
                     loading -> {
                         Box(
                             Modifier
                                 .fillMaxWidth()
-                                .height(280.dp),
+                                .height(320.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator(
@@ -214,20 +207,17 @@ fun DesktopBlockAppsPickerDialog(onDismiss: () -> Unit) {
                             error!!,
                             color = Color(0xFFFF8A80),
                             fontSize = 13.sp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(120.dp)
-                                .padding(vertical = 24.dp)
+                            modifier = Modifier.padding(vertical = 16.dp)
                         )
                     }
                     else -> {
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(320.dp),
+                                .height(360.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            items(rows, key = { it.exe + it.name }) { row ->
+                            items(rows.filter { it.name.isNotBlank() }, key = { it.exe + it.name }) { row ->
                                 val checked = row.exe in blocked
                                 Row(
                                     modifier = Modifier
@@ -236,40 +226,33 @@ fun DesktopBlockAppsPickerDialog(onDismiss: () -> Unit) {
                                             SurfaceVar.copy(alpha = 0.35f),
                                             RoundedCornerShape(10.dp)
                                         )
-                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Checkbox(
                                         checked = checked,
-                                        onCheckedChange = {
-                                            DesktopBlockedAppsStore.setBlocked(row.exe, it)
-                                        },
+                                        onCheckedChange = { DesktopBlockedAppsStore.setBlocked(row.exe, it) },
                                         colors = CheckboxDefaults.colors(checkedColor = DeepIndigo)
                                     )
-                                    Column(Modifier.weight(1f)) {
-                                        Text(row.name, fontSize = 13.sp, color = Color(0xFFE8E8F0))
-                                        Text(row.exe, fontSize = 11.sp, color = Color(0xFF808090))
-                                    }
+                                    Spacer(Modifier.size(6.dp))
+                                    Text(row.name, fontSize = 13.sp, color = Color(0xFFE8E8F0), modifier = Modifier.weight(1f))
                                 }
                             }
                         }
                     }
                 }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(onClick = { DesktopBlockedAppsStore.clearAll() }) {
-                        Text("Șterge toate", color = Color(0xFFFF8A80))
-                    }
-                    TextButton(onClick = onDismiss) {
-                        Text("Gata", color = DeepTeal, fontWeight = FontWeight.SemiBold)
-                    }
-                }
             }
-        }
-    }
+        },
+        dismissButton = {
+            TextButton(onClick = { DesktopBlockedAppsStore.clearAll() }) {
+                Text("Șterge toate", color = Color(0xFFFF8A80))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Gata", color = DeepTeal, fontWeight = FontWeight.SemiBold)
+            }
+        },
+        containerColor = SurfaceC
+    )
 }

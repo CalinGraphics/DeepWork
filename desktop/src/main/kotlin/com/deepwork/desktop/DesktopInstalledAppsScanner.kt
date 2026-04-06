@@ -15,7 +15,10 @@ data class DesktopInstalledAppRow(
 )
 
 /**
- * Citește programe din registry-ul Windows (DisplayIcon → .exe). Doar Windows.
+ * Citește aplicații instalate din Start Menu shortcuts (.lnk → TargetPath). Doar Windows.
+ *
+ * Motivație: lista din registry include frecvent uninstallers/setup/update. Shortcut-urile corespund mai bine
+ * listei „Aplicații instalate” din UI-ul Windows și dau un .exe concret pe care îl putem bloca.
  */
 object DesktopInstalledAppsScanner {
 
@@ -27,23 +30,32 @@ object DesktopInstalledAppsScanner {
         }
         runCatching {
             val script = """
-                ${'$'}keys = @(
-                  'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
-                  'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*',
-                  'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
+                ${'$'}startDirs = @(
+                  \"${'$'}env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\",
+                  \"${'$'}env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\\"
                 )
-                ${'$'}items = foreach (${'$'}k in ${'$'}keys) {
-                  Get-ItemProperty ${'$'}k -ErrorAction SilentlyContinue | Where-Object { ${'$'}_.DisplayName -and ${'$'}_.DisplayIcon }
-                }
-                ${'$'}out = foreach (${'$'}p in ${'$'}items) {
-                  ${'$'}icon = (${'$'}p.DisplayIcon -replace '^"+|"+$', '') -replace ',\d+${'$'}',''
-                  if (${'$'}icon.ToLower().EndsWith('.exe')) {
-                    ${'$'}icon = ${'$'}icon -replace '"',''
-                    ${'$'}exe = [System.IO.Path]::GetFileName(${'$'}icon).ToLowerInvariant()
-                    [PSCustomObject]@{ name = ${'$'}p.DisplayName; exe = ${'$'}exe }
+                ${'$'}shell = New-Object -ComObject WScript.Shell
+                ${'$'}rows = @()
+                foreach (${'$'}dir in ${'$'}startDirs) {
+                  if (-not (Test-Path ${'$'}dir)) { continue }
+                  ${'$'}lnks = Get-ChildItem -Path ${'$'}dir -Recurse -Filter *.lnk -ErrorAction SilentlyContinue
+                  foreach (${'$'}l in ${'$'}lnks) {
+                    try {
+                      ${'$'}sc = ${'$'}shell.CreateShortcut(${'$'}l.FullName)
+                      ${'$'}target = ${'$'}sc.TargetPath
+                      if (-not ${'$'}target) { continue }
+                      if (-not ${'$'}target.ToLower().EndsWith('.exe')) { continue }
+                      ${'$'}exe = [System.IO.Path]::GetFileName(${'$'}target).ToLowerInvariant()
+                      # filtrează instalatori/updaters/uninstallers
+                      if (${'$'}exe -match '^(setup|unins|uninstall|update|updater|installer)') { continue }
+                      if (${'$'}exe -match '.*(setup|unins|uninstall|update|updater|installer)\\.exe${'$'}') { continue }
+                      ${'$'}name = [System.IO.Path]::GetFileNameWithoutExtension(${'$'}l.Name)
+                      if (-not ${'$'}name) { continue }
+                      ${'$'}rows += [PSCustomObject]@{ name = ${'$'}name; exe = ${'$'}exe }
+                    } catch { }
                   }
                 }
-                @(${'$'}out) | Sort-Object name -Unique | ConvertTo-Json -Compress -Depth 4
+                @(${'$'}rows) | Sort-Object name -Unique | ConvertTo-Json -Compress -Depth 4
             """.trimIndent()
 
             val f = File.createTempFile("kara-scan", ".ps1")
