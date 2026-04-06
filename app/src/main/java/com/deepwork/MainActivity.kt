@@ -1,7 +1,10 @@
 package com.deepwork
 
+import android.view.KeyEvent
+import android.widget.Toast
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
@@ -36,9 +39,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -66,6 +74,11 @@ import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private var unlockSeqPos = 0
+    private var unlockSeqLastAt = 0L
+    @Volatile
+    internal var unlockUntilMs: Long = 0L
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -74,16 +87,51 @@ class MainActivity : ComponentActivity() {
             DeepWorkTheme {
                 val mainViewModel: MainViewModel = hiltViewModel()
                 val prefs by mainViewModel.preferences.collectAsState()
+                val strictFocusActive by mainViewModel.strictFocusActive.collectAsState()
                 if (!prefs.onboardingCompleted) {
                     KaraOnboardingScreen(
                         onComplete = { mainViewModel.completeOnboarding() },
                         onSkip = { mainViewModel.completeOnboarding() }
                     )
                 } else {
+                    StrictFocusGuard(
+                        strictFocusActive = strictFocusActive,
+                        unlockUntilMsProvider = { unlockUntilMs }
+                    )
                     DeepWorkAppContent()
                 }
             }
         }
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            // Combinație: VolUp, VolDown, VolUp, VolDown în max 3 secunde.
+            val expected = intArrayOf(
+                KeyEvent.KEYCODE_VOLUME_UP,
+                KeyEvent.KEYCODE_VOLUME_DOWN,
+                KeyEvent.KEYCODE_VOLUME_UP,
+                KeyEvent.KEYCODE_VOLUME_DOWN
+            )
+            val now = System.currentTimeMillis()
+            if (now - unlockSeqLastAt > 3000L) unlockSeqPos = 0
+            unlockSeqLastAt = now
+
+            if (event.keyCode == expected[unlockSeqPos]) {
+                unlockSeqPos++
+                if (unlockSeqPos >= expected.size) {
+                    unlockSeqPos = 0
+                    // Ieșire din lock task (dacă e activ).
+                    runCatching { stopLockTask() }
+                    unlockUntilMs = System.currentTimeMillis() + 6_000L
+                    Toast.makeText(this, "Kara: focus unlock", Toast.LENGTH_SHORT).show()
+                    return true
+                }
+            } else {
+                unlockSeqPos = if (event.keyCode == expected[0]) 1 else 0
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 }
 
@@ -100,6 +148,32 @@ sealed class BottomDestination(
 private const val ROUTE_PC_REMOTE = "pcremote"
 private const val ROUTE_NOTIFICATIONS = "notifications"
 private const val ROUTE_BLOCKED_APPS = "blocked_apps"
+
+@Composable
+private fun StrictFocusGuard(
+    strictFocusActive: Boolean,
+    unlockUntilMsProvider: () -> Long
+) {
+    val context = LocalContext.current
+    val activity = context as? ComponentActivity ?: return
+    val unlockUntilMs = unlockUntilMsProvider()
+
+    // Back blocat cât timp sesiunea e activă și nu e deblocat temporar.
+    BackHandler(enabled = strictFocusActive && System.currentTimeMillis() > unlockUntilMs) {
+        // no-op
+    }
+
+    LaunchedEffect(strictFocusActive, unlockUntilMs) {
+        if (strictFocusActive) {
+            // Re-intră în lock task. Dacă user-ul a dat unlock, allow ~6 secunde.
+            if (System.currentTimeMillis() > unlockUntilMs) {
+                runCatching { activity.startLockTask() }
+            }
+        } else {
+            runCatching { activity.stopLockTask() }
+        }
+    }
+}
 
 @Composable
 fun DeepWorkAppContent() {
