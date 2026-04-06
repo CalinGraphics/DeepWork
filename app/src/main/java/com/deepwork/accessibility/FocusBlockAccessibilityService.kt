@@ -18,11 +18,15 @@ class FocusBlockAccessibilityService : AccessibilityService() {
     @Inject
     lateinit var userPreferencesRepository: UserPreferencesRepository
 
-    private var lastRedirectAt = 0L
+    private var lastBlockAt = 0L
+    private var lastBlockedPackage: String? = null
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val ev = event ?: return
-        if (ev.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        if (
+            ev.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            ev.eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED
+        ) return
         if (!FocusSessionGate.isFocusSessionActive()) return
 
         val pkg = ev.packageName?.toString() ?: return
@@ -34,8 +38,13 @@ class FocusBlockAccessibilityService : AccessibilityService() {
         if (blocked.isEmpty() || pkg !in blocked) return
 
         val now = SystemClock.elapsedRealtime()
-        if (now - lastRedirectAt < 450L) return
-        lastRedirectAt = now
+        if (pkg == lastBlockedPackage && now - lastBlockAt < 300L) return
+        lastBlockedPackage = pkg
+        lastBlockAt = now
+
+        // Împinge imediat utilizatorul în afara aplicației blocate.
+        runCatching { performGlobalAction(GLOBAL_ACTION_HOME) }
+        runCatching { performGlobalAction(GLOBAL_ACTION_BACK) }
 
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or

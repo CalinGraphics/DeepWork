@@ -71,7 +71,15 @@ fun main() = application {
         DesktopCompanionAppTheme {
             DesktopCompanionApp(
                 strictFocusEnabled = strictFocusEnabled,
-                onStrictFocusChange = { strictFocusState.value = it }
+                onStrictFocusChange = { strictFocusState.value = it },
+                onRequestFocusForBlocking = {
+                    java.awt.EventQueue.invokeLater {
+                        runCatching {
+                            window.toFront()
+                            window.requestFocus()
+                        }
+                    }
+                }
             )
         }
     }

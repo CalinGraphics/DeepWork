@@ -57,6 +57,7 @@ import com.deepwork.core.ui.theme.DeepWorkTheme
 import com.deepwork.feature.analytics.AchievementsScreen
 import com.deepwork.feature.analytics.AnalyticsScreen
 import com.deepwork.feature.pcremote.PcRemoteScreen
+import com.deepwork.feature.settings.BlockedAppsPickerScreen
 import com.deepwork.feature.settings.SettingsScreen
 import com.deepwork.feature.tasks.TaskScreen
 import com.deepwork.feature.timer.TimerScreen
@@ -98,6 +99,7 @@ sealed class BottomDestination(
 
 private const val ROUTE_PC_REMOTE = "pcremote"
 private const val ROUTE_NOTIFICATIONS = "notifications"
+private const val ROUTE_BLOCKED_APPS = "blocked_apps"
 
 @Composable
 fun DeepWorkAppContent() {
@@ -180,8 +182,16 @@ fun DeepWorkAppContent() {
                 composable(ROUTE_NOTIFICATIONS) { NotificationsScreen() }
                 composable(BottomDestination.Settings.route) {
                     SettingsScreen(
-                        onOpenDesktopPairing = { navController.navigate(ROUTE_PC_REMOTE) }
+                        onOpenDesktopPairing = { navController.navigate(ROUTE_PC_REMOTE) },
+                        onOpenBlockedAppsPicker = {
+                            navController.navigate(ROUTE_BLOCKED_APPS) {
+                                launchSingleTop = true
+                            }
+                        }
                     )
+                }
+                composable(ROUTE_BLOCKED_APPS) {
+                    BlockedAppsPickerScreen(onBack = { navController.popBackStack() })
                 }
                 composable(ROUTE_PC_REMOTE) { PcRemoteScreen() }
             }

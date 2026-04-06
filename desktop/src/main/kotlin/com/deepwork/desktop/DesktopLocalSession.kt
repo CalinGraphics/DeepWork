@@ -220,6 +220,10 @@ object DesktopLocalSession {
             }
         }
     }
+
+    /** Timer pornit sau pe pauză — folosit pentru blocarea altor aplicații pe desktop. */
+    fun isFocusSessionActive(): Boolean =
+        _phase.value == DesktopSessionPhase.Running || _phase.value == DesktopSessionPhase.Paused
 }
 
 enum class DesktopMainTab {

@@ -58,6 +58,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,7 +104,8 @@ fun DesktopCompanionAppTheme(content: @Composable () -> Unit) {
 @Composable
 fun DesktopCompanionApp(
     strictFocusEnabled: Boolean,
-    onStrictFocusChange: (Boolean) -> Unit
+    onStrictFocusChange: (Boolean) -> Unit,
+    onRequestFocusForBlocking: () -> Unit = {}
 ) {
     val status by DesktopState.status.collectAsState()
     val connected by DesktopState.connected.collectAsState()
@@ -120,6 +122,11 @@ fun DesktopCompanionApp(
         DesktopLocalSession.sessionJustCompletedMinutes.collect { minutes ->
             DesktopSessionAlerts.notifySessionCompleted(minutes)
         }
+    }
+
+    val bringKaraToFront by rememberUpdatedState(onRequestFocusForBlocking)
+    LaunchedEffect(Unit) {
+        DesktopForegroundBlockLoop.run { bringKaraToFront() }
     }
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -161,6 +168,7 @@ fun DesktopCompanionApp(
                                             SessionTimerCard(status, connected)
                                             ProductivityHeatmapCard()
                                             GestureMapCard(connected, lastGesture)
+                                            DesktopBlockAppsCard()
                                             ConnectionCard(pairingUrl, usbBridgeStatus)
                                         }
                                     } else {
@@ -180,6 +188,7 @@ fun DesktopCompanionApp(
                                                 verticalArrangement = Arrangement.spacedBy(24.dp)
                                             ) {
                                                 GestureMapCard(connected, lastGesture)
+                                                DesktopBlockAppsCard()
                                                 ConnectionCard(pairingUrl, usbBridgeStatus)
                                             }
                                         }
@@ -239,7 +248,8 @@ fun DesktopCompanionApp(
                             DesktopInfoKind.Settings ->
                                 "Serverul WebSocket rulează pe portul 8080. Pornește aplicația înainte de împerechere; pe telefon folosește același rețea sau USB (adb reverse).\n\n" +
                                     "Strict Focus (implicit activ): ecran complet, mereu deasupra, fereastră neredimensionabilă — îți ține Kara în prim-plan. " +
-                                    "O aplicație Java nu poate bloca Alt+Tab sau notificările Windows ca un „lock” la nivel de sistem; pentru zero notificări folosește „Asistență pentru focus” / Do Not Disturb din Windows."
+                                    "O aplicație Java nu poate bloca Alt+Tab sau notificările Windows ca un „lock” la nivel de sistem; pentru zero notificări folosește „Asistență pentru focus” / Do Not Disturb din Windows.\n\n" +
+                                    "Blocare aplicații (dashboard): pe Windows poți bifa .exe-uri din programele instalate; în timpul sesiunii, dacă treci într-un program blocat, Kara revine în prim-plan (nu închide alte aplicații)."
                             DesktopInfoKind.Notifications ->
                                 "Când telefonul este conectat, gesturile și actualizările de sesiune apar în bara de stare și în jurnalul de conexiune."
                         },
