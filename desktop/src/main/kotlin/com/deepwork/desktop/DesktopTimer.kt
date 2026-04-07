@@ -9,6 +9,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -113,99 +114,181 @@ fun DesktopTimerArc(
         ),
         label = "pulseB"
     ).value
+    val growth = when (phase) {
+        DesktopSessionPhase.Running, DesktopSessionPhase.Paused -> 1f - progress.coerceIn(0f, 1f)
+        DesktopSessionPhase.Idle -> 0f
+    }
 
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.fillMaxWidth()
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(24.dp)
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            CardioWave(
-                visible = runningPulse,
-                travelAlpha = pulseA,
-                mirror = false,
-                modifier = Modifier.size(width = 110.dp, height = 56.dp)
-            )
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(sizeDp)) {
-                Canvas(modifier = Modifier.size(sizeDp)) {
-                    val stroke = 10.dp.toPx()
-                    val arcSize = Size(size.width - stroke, size.height - stroke)
-                    val topLeft = Offset(stroke / 2, stroke / 2)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                CardioWave(
+                    visible = runningPulse,
+                    travelAlpha = pulseA,
+                    mirror = false,
+                    modifier = Modifier.size(width = 110.dp, height = 56.dp)
+                )
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(sizeDp)) {
+                    Canvas(modifier = Modifier.size(sizeDp)) {
+                        val stroke = 10.dp.toPx()
+                        val arcSize = Size(size.width - stroke, size.height - stroke)
+                        val topLeft = Offset(stroke / 2, stroke / 2)
 
-                    drawArc(
-                        color = trackColor,
-                        startAngle = 0f,
-                        sweepAngle = 360f,
-                        useCenter = false,
-                        topLeft = topLeft,
-                        size = arcSize,
-                        style = Stroke(width = stroke, cap = StrokeCap.Round)
-                    )
+                        drawArc(
+                            color = trackColor,
+                            startAngle = 0f,
+                            sweepAngle = 360f,
+                            useCenter = false,
+                            topLeft = topLeft,
+                            size = arcSize,
+                            style = Stroke(width = stroke, cap = StrokeCap.Round)
+                        )
 
-                    val sweep = 360f * progress.coerceIn(0f, 1f)
-                    drawArc(
-                        brush = Brush.sweepGradient(
-                            colors = listOf(DeepIndigo, DeepTeal, DeepIndigo),
-                            center = Offset(size.width / 2f, size.height / 2f)
-                        ),
-                        startAngle = -90f,
-                        sweepAngle = sweep,
-                        useCenter = false,
-                        topLeft = topLeft,
-                        size = arcSize,
-                        style = Stroke(width = stroke * 0.85f, cap = StrokeCap.Round)
-                    )
+                        val sweep = 360f * progress.coerceIn(0f, 1f)
+                        drawArc(
+                            brush = Brush.sweepGradient(
+                                colors = listOf(DeepIndigo, DeepTeal, DeepIndigo),
+                                center = Offset(size.width / 2f, size.height / 2f)
+                            ),
+                            startAngle = -90f,
+                            sweepAngle = sweep,
+                            useCenter = false,
+                            topLeft = topLeft,
+                            size = arcSize,
+                            style = Stroke(width = stroke * 0.85f, cap = StrokeCap.Round)
+                        )
 
-                    val radius = size.minDimension / 2f - stroke * 0.35f
-                    val dotCenter = Offset(size.width / 2f, size.height / 2f - radius)
-                    drawCircle(
-                        color = DeepTeal,
-                        radius = 5.dp.toPx(),
-                        center = dotCenter
-                    )
-                }
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    AnimatedContent(
-                        targetState = timeText,
-                        transitionSpec = {
-                            if (targetState > initialState) {
-                                slideInVertically { h -> h } + fadeIn() togetherWith
-                                    slideOutVertically { h -> -h } + fadeOut()
-                            } else {
-                                slideInVertically { h -> -h } + fadeIn() togetherWith
-                                    slideOutVertically { h -> h } + fadeOut()
-                            } using SizeTransform(clip = false)
-                        },
-                        label = "desktopTime"
-                    ) { targetTime ->
-                        Text(
-                            text = targetTime,
-                            fontSize = 52.sp,
-                            fontWeight = FontWeight.Light,
-                            color = MaterialTheme.colorScheme.onBackground
+                        val radius = size.minDimension / 2f - stroke * 0.35f
+                        val dotCenter = Offset(size.width / 2f, size.height / 2f - radius)
+                        drawCircle(
+                            color = DeepTeal,
+                            radius = 5.dp.toPx(),
+                            center = dotCenter
                         )
                     }
-                    Text(
-                        text = when (phase) {
-                            DesktopSessionPhase.Idle -> "Remaining"
-                            DesktopSessionPhase.Running -> "Remaining"
-                            DesktopSessionPhase.Paused -> "Paused"
-                        },
-                        fontSize = 12.sp,
-                        letterSpacing = 2.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        AnimatedContent(
+                            targetState = timeText,
+                            transitionSpec = {
+                                if (targetState > initialState) {
+                                    slideInVertically { h -> h } + fadeIn() togetherWith
+                                        slideOutVertically { h -> -h } + fadeOut()
+                                } else {
+                                    slideInVertically { h -> -h } + fadeIn() togetherWith
+                                        slideOutVertically { h -> h } + fadeOut()
+                                } using SizeTransform(clip = false)
+                            },
+                            label = "desktopTime"
+                        ) { targetTime ->
+                            Text(
+                                text = targetTime,
+                                fontSize = 52.sp,
+                                fontWeight = FontWeight.Light,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+                        Text(
+                            text = when (phase) {
+                                DesktopSessionPhase.Idle -> "Remaining"
+                                DesktopSessionPhase.Running -> "Remaining"
+                                DesktopSessionPhase.Paused -> "Paused"
+                            },
+                            fontSize = 12.sp,
+                            letterSpacing = 2.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 6.dp)
+                        )
+                    }
                 }
+                CardioWave(
+                    visible = runningPulse,
+                    travelAlpha = pulseB,
+                    mirror = true,
+                    modifier = Modifier.size(width = 110.dp, height = 56.dp)
+                )
             }
-            CardioWave(
-                visible = runningPulse,
-                travelAlpha = pulseB,
-                mirror = true,
-                modifier = Modifier.size(width = 110.dp, height = 56.dp)
+        }
+        DesktopGrowingTree(
+            growth = growth,
+            visible = phase != DesktopSessionPhase.Idle
+        )
+    }
+}
+
+@Composable
+private fun DesktopGrowingTree(
+    growth: Float,
+    visible: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val animatedGrowth by animateFloatAsState(
+        targetValue = growth.coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 650),
+        label = "desktopTreeGrowth"
+    )
+    val motion = rememberInfiniteTransition(label = "desktopTreeMotion")
+    val swayAnim = motion.animateFloat(
+        initialValue = -1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "desktopTreeSway"
+    ).value
+    val sway = if (visible) swayAnim else 0f
+
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(118.dp)
+            .padding(horizontal = 24.dp)
+    ) {
+        if (!visible) return@Canvas
+        val centerX = size.width / 2f
+        val groundY = size.height * 0.90f
+        val trunkTopY = groundY - (size.height * 0.52f * animatedGrowth)
+
+        drawLine(
+            color = Color.White.copy(alpha = 0.09f),
+            start = Offset(0f, groundY),
+            end = Offset(size.width, groundY),
+            strokeWidth = 2.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = Color(0xFF8A5B37),
+            start = Offset(centerX, groundY),
+            end = Offset(centerX, trunkTopY),
+            strokeWidth = 6.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+        val crownProgress = ((animatedGrowth - 0.25f) / 0.75f).coerceIn(0f, 1f)
+        if (crownProgress > 0f) {
+            val crownRadius = size.height * (0.11f + 0.22f * crownProgress)
+            val swayPx = sway * crownRadius * 0.12f
+            val c = Offset(centerX + swayPx, trunkTopY - crownRadius * 0.35f)
+            drawCircle(DeepTeal.copy(alpha = 0.45f + 0.5f * crownProgress), crownRadius, c)
+            drawCircle(
+                DeepIndigo.copy(alpha = 0.35f + 0.4f * crownProgress),
+                crownRadius * 0.74f,
+                Offset(c.x - crownRadius * 0.46f, c.y + crownRadius * 0.12f)
+            )
+            drawCircle(
+                DeepTeal.copy(alpha = 0.4f + 0.35f * crownProgress),
+                crownRadius * 0.7f,
+                Offset(c.x + crownRadius * 0.48f, c.y + crownRadius * 0.1f)
             )
         }
     }

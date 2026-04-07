@@ -9,6 +9,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -154,6 +155,10 @@ fun TimerScreen(
                     )
                     TimerArc(uiState = uiState, idleDurationMinutes = sessionDuration)
                     MobileCardioWaveStrip(visible = uiState is TimerState.Running)
+                    GrowingTree(
+                        uiState = uiState,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     TimerActionRow(
                         uiState = uiState,
                         onStart = { viewModel.startSession(sessionDuration) },
@@ -390,6 +395,91 @@ private fun MobileCardioWaveStrip(
         addWave(start + cycle, 0.55f)
         addWave(start + cycle * 2f, 0.35f)
         addWave(start + cycle * 3f, 0.55f)
+    }
+}
+
+@Composable
+private fun GrowingTree(
+    uiState: TimerState,
+    modifier: Modifier = Modifier
+) {
+    val rawGrowth = when (uiState) {
+        is TimerState.Running -> 1f - uiState.progress.coerceIn(0f, 1f)
+        is TimerState.Paused -> 1f - uiState.progress.coerceIn(0f, 1f)
+        is TimerState.Completed -> 1f
+        else -> 0f
+    }
+    val growth by animateFloatAsState(
+        targetValue = rawGrowth,
+        animationSpec = tween(durationMillis = 550),
+        label = "treeGrowth"
+    )
+
+    Canvas(
+        modifier = modifier
+            .height(132.dp)
+            .padding(horizontal = 24.dp)
+    ) {
+        val clamped = growth.coerceIn(0f, 1f)
+        val centerX = size.width / 2f
+        val groundY = size.height * 0.90f
+        val trunkTopY = groundY - (size.height * 0.52f * clamped)
+
+        // Ground line
+        drawLine(
+            color = Color.White.copy(alpha = 0.09f),
+            start = Offset(0f, groundY),
+            end = Offset(size.width, groundY),
+            strokeWidth = 2.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+
+        // Trunk grows first.
+        if (clamped > 0.02f) {
+            drawLine(
+                color = Color(0xFF8A5B37),
+                start = Offset(centerX, groundY),
+                end = Offset(centerX, trunkTopY),
+                strokeWidth = (5.dp.toPx() + 2.dp.toPx() * clamped),
+                cap = StrokeCap.Round
+            )
+        }
+
+        // Crown starts appearing after ~30% growth.
+        val crownProgress = ((clamped - 0.30f) / 0.70f).coerceIn(0f, 1f)
+        if (crownProgress > 0f) {
+            val crownRadius = size.height * (0.10f + 0.20f * crownProgress)
+            drawCircle(
+                color = DeepTeal.copy(alpha = 0.48f + 0.5f * crownProgress),
+                radius = crownRadius,
+                center = Offset(centerX, trunkTopY - crownRadius * 0.35f)
+            )
+            drawCircle(
+                color = DeepIndigo.copy(alpha = 0.36f + 0.4f * crownProgress),
+                radius = crownRadius * 0.76f,
+                center = Offset(centerX - crownRadius * 0.45f, trunkTopY - crownRadius * 0.1f)
+            )
+            drawCircle(
+                color = DeepTeal.copy(alpha = 0.42f + 0.38f * crownProgress),
+                radius = crownRadius * 0.72f,
+                center = Offset(centerX + crownRadius * 0.45f, trunkTopY - crownRadius * 0.05f)
+            )
+
+            // Small "premium" fireflies that appear near end of session.
+            val sparkle = ((clamped - 0.75f) / 0.25f).coerceIn(0f, 1f)
+            if (sparkle > 0f) {
+                drawCircle(
+                    color = Color(0xFFFFF3B0).copy(alpha = 0.6f * sparkle),
+                    radius = 2.8.dp.toPx(),
+                    center = Offset(centerX - crownRadius * 0.85f, trunkTopY - crownRadius * 0.7f)
+                )
+                drawCircle(
+                    color = Color(0xFFFFF3B0).copy(alpha = 0.5f * sparkle),
+                    radius = 2.4.dp.toPx(),
+                    center = Offset(centerX + crownRadius * 0.92f, trunkTopY - crownRadius * 0.52f)
+                )
+            }
+        }
     }
 }
 
