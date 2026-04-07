@@ -25,7 +25,7 @@ class RemoteSessionDurationSync @Inject constructor(
         scope.launch {
             webSocketClient.incomingMessages.collect { msg ->
                 if (msg.type != MessageType.TIMER_SYNC) return@collect
-                val minutes = (msg.payload as? JsonPrimitive)?.content?.toIntOrNull()?.coerceIn(5, 120)
+                val minutes = (msg.payload as? JsonPrimitive)?.content?.toIntOrNull()?.coerceIn(1, 360)
                     ?: return@collect
                 userPreferencesRepository.updateSessionDuration(minutes)
             }

@@ -169,7 +169,7 @@ class SettingsViewModel @Inject constructor(
                 webSocketClient.sendMessage(
                     DeepWorkMessage(
                         type = MessageType.TIMER_SYNC,
-                        payload = JsonPrimitive(durationMinutes.coerceIn(5, 120)),
+                        payload = JsonPrimitive(durationMinutes.coerceIn(1, 360)),
                         deviceId = "android_client"
                     )
                 )

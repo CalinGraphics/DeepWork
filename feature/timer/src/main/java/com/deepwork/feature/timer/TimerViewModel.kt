@@ -82,7 +82,7 @@ class TimerViewModel @Inject constructor(
         }
         viewModelScope.launch {
             userPreferencesRepository.userPreferencesFlow.collect { prefs ->
-                _sessionDurationMinutes.value = prefs.sessionDuration.coerceIn(5, 120)
+                _sessionDurationMinutes.value = prefs.sessionDuration.coerceIn(1, 360)
             }
         }
         viewModelScope.launch {
@@ -203,7 +203,7 @@ class TimerViewModel @Inject constructor(
             webSocketClient.sendMessage(
                 DeepWorkMessage(
                     type = MessageType.TIMER_COMPLETED,
-                    payload = JsonPrimitive(minutes.coerceIn(1, 120)),
+                    payload = JsonPrimitive(minutes.coerceIn(1, 360)),
                     deviceId = "android_client"
                 )
             )

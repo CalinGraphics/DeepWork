@@ -41,7 +41,7 @@ object DesktopWebSocketRelay {
         val session = synchronized(lock) { active } ?: return
         val msg = DeepWorkMessage(
             type = MessageType.TIMER_SYNC,
-            payload = JsonPrimitive(minutes.coerceIn(5, 120)),
+            payload = JsonPrimitive(minutes.coerceIn(1, 360)),
             deviceId = "desktop_companion"
         )
         val text = relayJson.encodeToString(DeepWorkMessage.serializer(), msg)

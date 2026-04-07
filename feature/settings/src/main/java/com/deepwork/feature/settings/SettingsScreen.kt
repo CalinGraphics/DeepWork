@@ -47,8 +47,8 @@ import com.deepwork.core.ui.theme.DeepIndigo
 import com.deepwork.core.ui.theme.DeepTeal
 import kotlin.math.roundToInt
 
-private const val MIN_SESSION = 5
-private const val MAX_SESSION = 120
+private const val MIN_SESSION = 1
+private const val MAX_SESSION = 360
 
 @Composable
 fun SettingsScreen(

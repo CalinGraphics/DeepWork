@@ -63,7 +63,7 @@ object DesktopLocalSession {
     private val _phase = MutableStateFlow(DesktopSessionPhase.Idle)
     val phase: StateFlow<DesktopSessionPhase> = _phase.asStateFlow()
 
-    private val _preferredMinutes = MutableStateFlow(loaded.preferredMinutes.coerceIn(5, 120))
+    private val _preferredMinutes = MutableStateFlow(loaded.preferredMinutes.coerceIn(1, 360))
     val preferredMinutes: StateFlow<Int> = _preferredMinutes.asStateFlow()
 
     private val _remainingSeconds = MutableStateFlow(_preferredMinutes.value * 60)
@@ -76,7 +76,7 @@ object DesktopLocalSession {
     val sessionJustCompletedMinutes: SharedFlow<Int> = _sessionJustCompletedMinutes.asSharedFlow()
 
     fun setPreferredMinutes(minutes: Int, fromRemote: Boolean = false) {
-        val v = minutes.coerceIn(5, 120)
+        val v = minutes.coerceIn(1, 360)
         _preferredMinutes.value = v
         if (_phase.value == DesktopSessionPhase.Idle) {
             _remainingSeconds.value = v * 60
@@ -160,13 +160,13 @@ object DesktopLocalSession {
             MessageType.TIMER_PAUSE -> pause()
             MessageType.TIMER_STOP -> endSession(SessionEndReason.Remote)
             MessageType.TIMER_COMPLETED -> {
-                val minutes = (msg.payload as? JsonPrimitive)?.content?.toIntOrNull()?.coerceIn(1, 120)
+                val minutes = (msg.payload as? JsonPrimitive)?.content?.toIntOrNull()?.coerceIn(1, 360)
                     ?: _preferredMinutes.value
                 DesktopSessionAlerts.ensureTray()
                 DesktopSessionAlerts.notifySessionCompleted(minutes)
             }
             MessageType.TIMER_SYNC -> {
-                val minutes = (msg.payload as? JsonPrimitive)?.content?.toIntOrNull()?.coerceIn(5, 120)
+                val minutes = (msg.payload as? JsonPrimitive)?.content?.toIntOrNull()?.coerceIn(1, 360)
                     ?: return
                 setPreferredMinutes(minutes, fromRemote = true)
             }

@@ -234,7 +234,7 @@ private fun TimerTopBar(
 @Composable
 @OptIn(ExperimentalAnimationApi::class)
 fun TimerArc(uiState: TimerState, idleDurationMinutes: Int = 25) {
-    val idleMillis = idleDurationMinutes.coerceIn(5, 120) * 60_000L
+    val idleMillis = idleDurationMinutes.coerceIn(1, 360) * 60_000L
     val progress = when (uiState) {
         is TimerState.Running -> uiState.progress
         is TimerState.Paused -> uiState.progress

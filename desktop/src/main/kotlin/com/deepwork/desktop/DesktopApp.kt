@@ -383,7 +383,7 @@ private fun SessionTimerCard(status: String, connected: Boolean) {
 
     var sliderDraft by remember { mutableFloatStateOf(preferredMinutes.toFloat()) }
     LaunchedEffect(preferredMinutes) {
-        sliderDraft = preferredMinutes.toFloat().coerceIn(5f, 120f)
+        sliderDraft = preferredMinutes.toFloat().coerceIn(1f, 360f)
     }
 
     Card(
@@ -409,13 +409,13 @@ private fun SessionTimerCard(status: String, connected: Boolean) {
                     )
                     Slider(
                         value = sliderDraft,
-                        onValueChange = { sliderDraft = it.coerceIn(5f, 120f) },
+                        onValueChange = { sliderDraft = it.coerceIn(1f, 360f) },
                         onValueChangeFinished = {
-                            val v = sliderDraft.roundToInt().coerceIn(5, 120)
+                            val v = sliderDraft.roundToInt().coerceIn(1, 360)
                             sliderDraft = v.toFloat()
                             DesktopLocalSession.setPreferredMinutes(v)
                         },
-                        valueRange = 5f..120f,
+                        valueRange = 1f..360f,
                         colors = SliderDefaults.colors(
                             thumbColor = DeepIndigo,
                             activeTrackColor = DeepIndigo,

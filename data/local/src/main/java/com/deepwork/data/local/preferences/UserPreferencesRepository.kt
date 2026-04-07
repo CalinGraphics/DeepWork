@@ -105,7 +105,7 @@ class UserPreferencesRepository @Inject constructor(
     }
 
     suspend fun updateSessionDuration(duration: Int) {
-        val v = duration.coerceIn(5, 120)
+        val v = duration.coerceIn(1, 360)
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.SESSION_DURATION] = v
         }

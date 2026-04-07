@@ -78,7 +78,7 @@ fun DesktopTimerArc(
     preferredMinutes: Int,
     remainingSeconds: Int
 ) {
-    val totalSec = preferredMinutes.coerceIn(5, 120) * 60
+    val totalSec = preferredMinutes.coerceIn(1, 360) * 60
     val remaining = remainingSeconds.coerceIn(0, totalSec)
     val remainingMillis = remaining * 1000L
 
